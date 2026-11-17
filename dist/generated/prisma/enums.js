@@ -9,7 +9,8 @@
 * 🟢 You can import this file directly.
 */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.HomeworkStatus = exports.DayOfWeek = exports.ExamResultStatus = exports.ExamStatus = exports.ExamType = exports.PaymentType = exports.PaymentMethod = exports.InvoiceStatus = exports.FeeFrequency = exports.AttendanceStatus = exports.EnrollmentStatus = exports.UserStatus = exports.SchoolStatus = exports.Role = exports.Gender = void 0;
+exports.CalculationType = exports.ComponentType = exports.LeaveStatus = exports.EmploymentStatus = exports.EmploymentType = exports.DeliveryStatus = exports.NotificationPriority = exports.NotificationChannel = exports.NotificationEventType = exports.TargetAudience = exports.AnnouncementCategory = exports.InvitationStatus = exports.TransferStatus = exports.PurchaseOrderStatus = exports.MaintenanceStatus = exports.MaintenancePriority = exports.DepreciationMethod = exports.AssetStatus = exports.AssetCondition = exports.StockMovementType = exports.InventoryItemType = exports.LibraryReservationStatus = exports.LibraryFineStatus = exports.LibraryFineType = exports.BookIssueStatus = exports.LibraryMemberStatus = exports.LibraryMemberType = exports.BookCopyStatus = exports.BookCondition = exports.AllocationStatus = exports.AssignmentStatus = exports.DriverStatus = exports.RouteStatus = exports.VehicleStatus = exports.VehicleType = exports.HomeworkStatus = exports.DayOfWeek = exports.ExamResultStatus = exports.ExamStatus = exports.ExamType = exports.PaymentType = exports.PaymentMethod = exports.InvoiceStatus = exports.FeeFrequency = exports.AttendanceStatus = exports.EnrollmentStatus = exports.UserStatus = exports.SchoolStatus = exports.Role = exports.Gender = void 0;
+exports.ExpenseStatus = exports.PayrollStatus = exports.PayrollPeriodStatus = void 0;
 exports.Gender = {
     MALE: 'MALE',
     FEMALE: 'FEMALE',
@@ -105,4 +106,254 @@ exports.HomeworkStatus = {
     SUBMITTED: 'SUBMITTED',
     EVALUATED: 'EVALUATED',
     LATE: 'LATE'
+};
+exports.VehicleType = {
+    BUS: 'BUS',
+    MINI_BUS: 'MINI_BUS',
+    VAN: 'VAN',
+    OTHER: 'OTHER'
+};
+exports.VehicleStatus = {
+    ACTIVE: 'ACTIVE',
+    MAINTENANCE: 'MAINTENANCE',
+    INACTIVE: 'INACTIVE'
+};
+exports.RouteStatus = {
+    ACTIVE: 'ACTIVE',
+    INACTIVE: 'INACTIVE'
+};
+exports.DriverStatus = {
+    ACTIVE: 'ACTIVE',
+    INACTIVE: 'INACTIVE',
+    SUSPENDED: 'SUSPENDED'
+};
+exports.AssignmentStatus = {
+    ACTIVE: 'ACTIVE',
+    COMPLETED: 'COMPLETED',
+    CANCELLED: 'CANCELLED'
+};
+exports.AllocationStatus = {
+    ACTIVE: 'ACTIVE',
+    COMPLETED: 'COMPLETED',
+    CANCELLED: 'CANCELLED'
+};
+exports.BookCondition = {
+    NEW: 'NEW',
+    GOOD: 'GOOD',
+    FAIR: 'FAIR',
+    POOR: 'POOR',
+    DAMAGED: 'DAMAGED'
+};
+exports.BookCopyStatus = {
+    AVAILABLE: 'AVAILABLE',
+    ISSUED: 'ISSUED',
+    RESERVED: 'RESERVED',
+    LOST: 'LOST',
+    DAMAGED: 'DAMAGED',
+    UNDER_MAINTENANCE: 'UNDER_MAINTENANCE'
+};
+exports.LibraryMemberType = {
+    STUDENT: 'STUDENT',
+    FACULTY: 'FACULTY',
+    STAFF: 'STAFF'
+};
+exports.LibraryMemberStatus = {
+    ACTIVE: 'ACTIVE',
+    SUSPENDED: 'SUSPENDED',
+    EXPIRED: 'EXPIRED'
+};
+exports.BookIssueStatus = {
+    ISSUED: 'ISSUED',
+    RETURNED: 'RETURNED',
+    OVERDUE: 'OVERDUE',
+    LOST: 'LOST',
+    DAMAGED: 'DAMAGED'
+};
+exports.LibraryFineType = {
+    OVERDUE: 'OVERDUE',
+    LOST_BOOK: 'LOST_BOOK',
+    DAMAGE: 'DAMAGE',
+    MANUAL: 'MANUAL'
+};
+exports.LibraryFineStatus = {
+    UNPAID: 'UNPAID',
+    PARTIALLY_PAID: 'PARTIALLY_PAID',
+    PAID: 'PAID',
+    WAIVED: 'WAIVED'
+};
+exports.LibraryReservationStatus = {
+    PENDING: 'PENDING',
+    READY: 'READY',
+    FULFILLED: 'FULFILLED',
+    CANCELLED: 'CANCELLED',
+    EXPIRED: 'EXPIRED'
+};
+exports.InventoryItemType = {
+    CONSUMABLE: 'CONSUMABLE',
+    ASSET: 'ASSET'
+};
+exports.StockMovementType = {
+    INWARD: 'INWARD',
+    OUTWARD: 'OUTWARD',
+    ADJUSTMENT: 'ADJUSTMENT',
+    TRANSFER: 'TRANSFER',
+    DAMAGED: 'DAMAGED',
+    EXPIRED: 'EXPIRED',
+    RETURN: 'RETURN'
+};
+exports.AssetCondition = {
+    NEW: 'NEW',
+    GOOD: 'GOOD',
+    FAIR: 'FAIR',
+    POOR: 'POOR',
+    DAMAGED: 'DAMAGED'
+};
+exports.AssetStatus = {
+    AVAILABLE: 'AVAILABLE',
+    ASSIGNED: 'ASSIGNED',
+    UNDER_MAINTENANCE: 'UNDER_MAINTENANCE',
+    DAMAGED: 'DAMAGED',
+    DISPOSED: 'DISPOSED',
+    LOST: 'LOST'
+};
+exports.DepreciationMethod = {
+    STRAIGHT_LINE: 'STRAIGHT_LINE',
+    WRITTEN_DOWN_VALUE: 'WRITTEN_DOWN_VALUE'
+};
+exports.MaintenancePriority = {
+    LOW: 'LOW',
+    MEDIUM: 'MEDIUM',
+    HIGH: 'HIGH',
+    CRITICAL: 'CRITICAL'
+};
+exports.MaintenanceStatus = {
+    OPEN: 'OPEN',
+    IN_PROGRESS: 'IN_PROGRESS',
+    ON_HOLD: 'ON_HOLD',
+    RESOLVED: 'RESOLVED',
+    CLOSED: 'CLOSED'
+};
+exports.PurchaseOrderStatus = {
+    DRAFT: 'DRAFT',
+    ORDERED: 'ORDERED',
+    PARTIALLY_RECEIVED: 'PARTIALLY_RECEIVED',
+    RECEIVED: 'RECEIVED',
+    CANCELLED: 'CANCELLED'
+};
+exports.TransferStatus = {
+    PENDING: 'PENDING',
+    COMPLETED: 'COMPLETED',
+    CANCELLED: 'CANCELLED'
+};
+exports.InvitationStatus = {
+    PENDING: 'PENDING',
+    ACCEPTED: 'ACCEPTED',
+    EXPIRED: 'EXPIRED',
+    REVOKED: 'REVOKED'
+};
+exports.AnnouncementCategory = {
+    GENERAL: 'GENERAL',
+    ACADEMIC: 'ACADEMIC',
+    EXAMINATION: 'EXAMINATION',
+    HOLIDAY: 'HOLIDAY',
+    SPORTS: 'SPORTS',
+    EVENT: 'EVENT'
+};
+exports.TargetAudience = {
+    ALL: 'ALL',
+    PARENTS: 'PARENTS',
+    STUDENTS: 'STUDENTS',
+    TEACHERS: 'TEACHERS',
+    STAFF: 'STAFF'
+};
+exports.NotificationEventType = {
+    ATTENDANCE_MARKED: 'ATTENDANCE_MARKED',
+    STUDENT_ABSENT: 'STUDENT_ABSENT',
+    FEE_INVOICE_GENERATED: 'FEE_INVOICE_GENERATED',
+    FEE_PAYMENT_RECEIVED: 'FEE_PAYMENT_RECEIVED',
+    FEE_DUE_REMINDER: 'FEE_DUE_REMINDER',
+    EXAM_TIMETABLE_PUBLISHED: 'EXAM_TIMETABLE_PUBLISHED',
+    EXAM_RESULTS_PUBLISHED: 'EXAM_RESULTS_PUBLISHED',
+    HOMEWORK_ASSIGNED: 'HOMEWORK_ASSIGNED',
+    HOMEWORK_DEADLINE_REMINDER: 'HOMEWORK_DEADLINE_REMINDER',
+    ANNOUNCEMENT_PUBLISHED: 'ANNOUNCEMENT_PUBLISHED',
+    TRANSPORT_UPDATE: 'TRANSPORT_UPDATE',
+    LIBRARY_BOOK_ISSUED: 'LIBRARY_BOOK_ISSUED',
+    LIBRARY_BOOK_DUE: 'LIBRARY_BOOK_DUE',
+    GENERAL_NOTICE: 'GENERAL_NOTICE',
+    LEAVE_APPLICATION_SUBMITTED: 'LEAVE_APPLICATION_SUBMITTED',
+    LEAVE_STATUS_UPDATED: 'LEAVE_STATUS_UPDATED',
+    PAYROLL_GENERATED: 'PAYROLL_GENERATED',
+    PAYSLIP_PUBLISHED: 'PAYSLIP_PUBLISHED',
+    PAYROLL_PAID: 'PAYROLL_PAID',
+    EXPENSE_SUBMITTED: 'EXPENSE_SUBMITTED',
+    EXPENSE_STATUS_UPDATED: 'EXPENSE_STATUS_UPDATED'
+};
+exports.NotificationChannel = {
+    IN_APP: 'IN_APP',
+    EMAIL: 'EMAIL',
+    SMS: 'SMS',
+    PUSH: 'PUSH'
+};
+exports.NotificationPriority = {
+    LOW: 'LOW',
+    NORMAL: 'NORMAL',
+    HIGH: 'HIGH',
+    URGENT: 'URGENT'
+};
+exports.DeliveryStatus = {
+    PENDING: 'PENDING',
+    SENT: 'SENT',
+    DELIVERED: 'DELIVERED',
+    FAILED: 'FAILED',
+    RETRYING: 'RETRYING'
+};
+exports.EmploymentType = {
+    PERMANENT: 'PERMANENT',
+    TEMPORARY: 'TEMPORARY',
+    CONTRACTUAL: 'CONTRACTUAL',
+    PART_TIME: 'PART_TIME'
+};
+exports.EmploymentStatus = {
+    ACTIVE: 'ACTIVE',
+    ON_LEAVE: 'ON_LEAVE',
+    RESIGNED: 'RESIGNED',
+    TERMINATED: 'TERMINATED',
+    RETIRED: 'RETIRED'
+};
+exports.LeaveStatus = {
+    PENDING: 'PENDING',
+    APPROVED: 'APPROVED',
+    REJECTED: 'REJECTED',
+    CANCELLED: 'CANCELLED'
+};
+exports.ComponentType = {
+    EARNING: 'EARNING',
+    DEDUCTION: 'DEDUCTION'
+};
+exports.CalculationType = {
+    FLAT: 'FLAT',
+    PERCENTAGE: 'PERCENTAGE'
+};
+exports.PayrollPeriodStatus = {
+    DRAFT: 'DRAFT',
+    PROCESSING: 'PROCESSING',
+    APPROVED: 'APPROVED',
+    FINALIZED: 'FINALIZED',
+    PAID: 'PAID'
+};
+exports.PayrollStatus = {
+    DRAFT: 'DRAFT',
+    APPROVED: 'APPROVED',
+    FINALIZED: 'FINALIZED',
+    PAID: 'PAID',
+    CANCELLED: 'CANCELLED'
+};
+exports.ExpenseStatus = {
+    DRAFT: 'DRAFT',
+    PENDING_APPROVAL: 'PENDING_APPROVAL',
+    APPROVED: 'APPROVED',
+    REJECTED: 'REJECTED',
+    PAID: 'PAID',
+    CANCELLED: 'CANCELLED'
 };

@@ -70,6 +70,7 @@ model parent_students {
   studentId String
   relation  String?  // e.g. "FATHER", "MOTHER", "GUARDIAN"
   isPrimary Boolean  @default(false)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   parents   parents  @relation(fields: [parentId], references: [id], onDelete: Cascade)
   students  students @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -92,6 +93,7 @@ model parents {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   parent_students  parent_students[]
+  portal_invitations portal_invitations[]
   schools          schools           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   users            users?            @relation(fields: [userId], references: [id])
 
@@ -164,6 +166,30 @@ model schools {
   inventory_depreciations      inventory_depreciations[]
   inventory_maintenance_tickets inventory_maintenance_tickets[]
   inventory_purchase_orders    inventory_purchase_orders[]
+  portal_settings              portal_settings?
+  portal_invitations           portal_invitations[]
+  announcements                announcements[]
+  notifications                notifications[]
+  notification_recipients      notification_recipients[]
+  notification_templates       notification_templates[]
+  notification_preferences     notification_preferences[]
+  notification_deliveries      notification_deliveries[]
+  notification_settings        notification_settings?
+  departments                  departments[]
+  designations                 designations[]
+  employee_profiles            employee_profiles[]
+  employee_documents           employee_documents[]
+  leave_types                  leave_types[]
+  leave_balances               leave_balances[]
+  leave_applications           leave_applications[]
+  salary_structures            salary_structures[]
+  employee_salary_assignments  employee_salary_assignments[]
+  payroll_periods              payroll_periods[]
+  payroll_records              payroll_records[]
+  payroll_adjustments          payroll_adjustments[]
+  payslips                     payslips[]
+  expense_categories           expense_categories[]
+  expenses                     expenses[]
 }
 
 model sections {
@@ -241,6 +267,7 @@ model students {
   homework_submissions homework_submissions[]
   transport_allocations student_transport_allocations[]
   library_members      library_members[]
+  portal_invitations   portal_invitations[]
   schools              schools                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   users                users?                 @relation(fields: [userId], references: [id])
 
@@ -292,6 +319,8 @@ model teachers {
   assigned_homework     homework[]         @relation("TeacherHomework")
   library_members       library_members[]
   inventory_asset_assignments inventory_asset_assignments[]
+  employee_profiles    employee_profiles?
+  headed_departments   departments[]      @relation("DepartmentHead")
   schools          schools            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   users            users              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -327,6 +356,15 @@ model users {
   library_fine_adjustments  library_fine_adjustments[]
   inventory_asset_assignments inventory_asset_assignments[]
   inventory_stock_movements   inventory_stock_movements[]
+  notification_recipients     notification_recipients[]
+  notification_preferences    notification_preferences[]
+  notification_deliveries     notification_deliveries[]
+  leave_approvals             leave_applications[]   @relation("LeaveApprover")
+  finalized_payroll_periods   payroll_periods[]      @relation("PayrollPeriodFinalizer")
+  payroll_adjustments         payroll_adjustments[]  @relation("PayrollAdjuster")
+  created_expenses            expenses[]             @relation("ExpenseCreator")
+  approved_expenses           expenses[]             @relation("ExpenseApprover")
+  expense_step_approvals      expense_approvals[]    @relation("ExpenseStepApprover")
   schools                   schools?             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([role])
@@ -1802,3 +1840,746 @@ enum TransferStatus {
   COMPLETED
   CANCELLED
 }
+
+// ==========================================
+// PHASE 6 MODELS: PARENT & STUDENT PORTAL
+// ==========================================
+
+model portal_settings {
+  id                         String   @id @default(cuid())
+  schoolId                   String   @unique
+  isParentPortalEnabled      Boolean  @default(true)
+  isStudentPortalEnabled     Boolean  @default(true)
+  allowParentFeePayment      Boolean  @default(false)
+  allowStudentHomeworkUpload Boolean  @default(false)
+  showExamRank               Boolean  @default(false)
+  showFeeToStudent           Boolean  @default(false)
+  allowAttendanceDownload    Boolean  @default(true)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  schools                    schools  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+model portal_invitations {
+  id          String           @id @default(cuid())
+  schoolId    String
+  email       String
+  role        Role             // PARENT or STUDENT
+  parentId    String?
+  studentId   String?
+  token       String           @unique
+  expiresAt   DateTime
+  status      InvitationStatus @default(PENDING)
+  invitedById String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  schools     schools          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  parents     parents?         @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  students    students?        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([token])
+  @@index([email])
+}
+
+model announcements {
+  id             String               @id @default(cuid())
+  schoolId       String
+  title          String
+  content        String
+  category       AnnouncementCategory @default(GENERAL)
+  targetAudience TargetAudience       @default(ALL)
+  isPublished    Boolean              @default(true)
+  publishedAt    DateTime             @default(now())
+  expiresAt      DateTime?
+  attachmentUrl  String?
+  createdById    String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  schools        schools              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([targetAudience])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum AnnouncementCategory {
+  GENERAL
+  ACADEMIC
+  EXAMINATION
+  HOLIDAY
+  SPORTS
+  EVENT
+}
+
+enum TargetAudience {
+  ALL
+  PARENTS
+  STUDENTS
+  TEACHERS
+  STAFF
+}
+
+// ==========================================
+// PHASE 7 MODELS: NOTIFICATION SYSTEM
+// ==========================================
+
+model notifications {
+  id             String                 @id @default(cuid())
+  schoolId       String
+  eventType      NotificationEventType
+  title          String
+  content        String
+  priority       NotificationPriority   @default(NORMAL)
+  channels       NotificationChannel[]
+  targetAudience TargetAudience?
+  data           Json?
+  createdById    String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  schools        schools                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  recipients     notification_recipients[]
+  deliveries     notification_deliveries[]
+
+  @@index([schoolId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model notification_recipients {
+  id             String        @id @default(cuid())
+  notificationId String
+  userId         String
+  schoolId       String
+  isRead         Boolean       @default(false)
+  readAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  notifications  notifications @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  users          users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schools        schools       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId, isRead])
+  @@index([schoolId])
+}
+
+model notification_templates {
+  id          String                @id @default(cuid())
+  schoolId    String
+  name        String
+  eventType   NotificationEventType
+  channel     NotificationChannel
+  subject     String?
+  body        String
+  variables   Json?
+  isActive    Boolean               @default(true)
+  isSystem    Boolean               @default(false)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  schools     schools               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, eventType, channel])
+  @@index([schoolId])
+  @@index([eventType])
+}
+
+model notification_preferences {
+  id          String                @id @default(cuid())
+  userId      String
+  schoolId    String
+  eventType   NotificationEventType
+  inApp       Boolean               @default(true)
+  email       Boolean               @default(true)
+  sms         Boolean               @default(false)
+  push        Boolean               @default(false)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  users       users                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schools     schools               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventType])
+  @@index([userId])
+  @@index([schoolId])
+}
+
+model notification_deliveries {
+  id               String               @id @default(cuid())
+  notificationId   String
+  recipientId      String?
+  userId           String
+  schoolId         String
+  channel          NotificationChannel
+  recipientTarget  String               // Email address, phone number, push token, or userId
+  status           DeliveryStatus       @default(PENDING)
+  attemptCount     Int                  @default(0)
+  maxAttempts      Int                  @default(3)
+  lastAttemptAt    DateTime?
+  deliveredAt      DateTime?
+  errorMessage     String?
+  providerResponse Json?
+  idempotencyKey   String?              @unique
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  notifications    notifications        @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  users            users                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schools          schools              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([status])
+  @@index([userId])
+  @@index([notificationId])
+}
+
+model notification_settings {
+  id                    String   @id @default(cuid())
+  schoolId              String   @unique
+  emailEnabled          Boolean  @default(true)
+  smsEnabled            Boolean  @default(false)
+  pushEnabled           Boolean  @default(false)
+  inAppEnabled          Boolean  @default(true)
+  senderEmail           String?
+  senderName            String?
+  smsSenderId           String?
+  quietHoursStart       String?  // e.g. "22:00"
+  quietHoursEnd         String?  // e.g. "07:00"
+  maxDailySmsPerStudent Int      @default(5)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  schools               schools  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+enum NotificationEventType {
+  ATTENDANCE_MARKED
+  STUDENT_ABSENT
+  FEE_INVOICE_GENERATED
+  FEE_PAYMENT_RECEIVED
+  FEE_DUE_REMINDER
+  EXAM_TIMETABLE_PUBLISHED
+  EXAM_RESULTS_PUBLISHED
+  HOMEWORK_ASSIGNED
+  HOMEWORK_DEADLINE_REMINDER
+  ANNOUNCEMENT_PUBLISHED
+  TRANSPORT_UPDATE
+  LIBRARY_BOOK_ISSUED
+  LIBRARY_BOOK_DUE
+  GENERAL_NOTICE
+  LEAVE_APPLICATION_SUBMITTED
+  LEAVE_STATUS_UPDATED
+  PAYROLL_GENERATED
+  PAYSLIP_PUBLISHED
+  PAYROLL_PAID
+  EXPENSE_SUBMITTED
+  EXPENSE_STATUS_UPDATED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  RETRYING
+}
+
+// ==========================================
+// PHASE 8: HR, PAYROLL & EXPENSES MANAGEMENT
+// ==========================================
+
+enum EmploymentType {
+  PERMANENT
+  TEMPORARY
+  CONTRACTUAL
+  PART_TIME
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  RESIGNED
+  TERMINATED
+  RETIRED
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ComponentType {
+  EARNING
+  DEDUCTION
+}
+
+enum CalculationType {
+  FLAT
+  PERCENTAGE
+}
+
+enum PayrollPeriodStatus {
+  DRAFT
+  PROCESSING
+  APPROVED
+  FINALIZED
+  PAID
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  FINALIZED
+  PAID
+  CANCELLED
+}
+
+enum ExpenseStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  PAID
+  CANCELLED
+}
+
+model departments {
+  id            String              @id @default(cuid())
+  schoolId      String
+  name          String
+  code          String?
+  description   String?
+  headTeacherId String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  schools       schools             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  headTeacher   teachers?           @relation("DepartmentHead", fields: [headTeacherId], references: [id], onDelete: SetNull)
+  employee_profiles employee_profiles[]
+  expenses      expenses[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model designations {
+  id            String              @id @default(cuid())
+  schoolId      String
+  title         String
+  code          String?
+  description   String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  schools       schools             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  employee_profiles employee_profiles[]
+
+  @@unique([schoolId, title])
+  @@index([schoolId])
+}
+
+model employee_profiles {
+  id                       String               @id @default(cuid())
+  schoolId                 String
+  teacherId                String               @unique
+  departmentId             String?
+  designationId            String?
+  employmentType           EmploymentType       @default(PERMANENT)
+  employmentStatus         EmploymentStatus     @default(ACTIVE)
+  joiningDate              DateTime             @default(now())
+  confirmationDate         DateTime?
+  contractEndDate          DateTime?
+  reportingManagerId       String?
+  workEmail                String?
+  emergencyContactName     String?
+  emergencyContactPhone    String?
+  emergencyContactRelation String?
+  bloodGroup               String?
+  address                  String?
+  bankName                 String?
+  accountNumber            String?
+  bankIfsc                 String?
+  panNumber                String?
+  uanNumber                String?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+
+  schools                  schools              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachers                 teachers             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  departments              departments?         @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  designations             designations?        @relation(fields: [designationId], references: [id], onDelete: SetNull)
+  reportingManager         employee_profiles?   @relation("EmployeeManager", fields: [reportingManagerId], references: [id], onDelete: SetNull)
+  subordinates             employee_profiles[]  @relation("EmployeeManager")
+  employee_documents       employee_documents[]
+  leave_balances           leave_balances[]
+  leave_applications       leave_applications[]
+  employee_salary_assignments employee_salary_assignments[]
+  payroll_records          payroll_records[]
+  payslips                 payslips[]
+  expenses                 expenses[]
+
+  @@index([schoolId])
+  @@index([departmentId])
+  @@index([designationId])
+}
+
+model employee_documents {
+  id                String             @id @default(cuid())
+  schoolId          String
+  employeeProfileId String
+  documentType      String             // e.g. "ID_PROOF", "RESUME", "CONTRACT", "CERTIFICATE"
+  title             String
+  fileUrl           String
+  fileSize          Int?
+  mimeType          String?
+  verified          Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  schools           schools            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  employee_profiles employee_profiles  @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([employeeProfileId])
+}
+
+model leave_types {
+  id           String               @id @default(cuid())
+  schoolId     String
+  name         String
+  code         String
+  daysAllowed  Int                  @default(12)
+  isPaid       Boolean              @default(true)
+  carryForward Boolean              @default(false)
+  description  String?
+  isActive     Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  schools      schools              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  leave_balances leave_balances[]
+  leave_applications leave_applications[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model leave_balances {
+  id                String             @id @default(cuid())
+  schoolId          String
+  employeeProfileId String
+  leaveTypeId       String
+  year              Int
+  allocated         Float              @default(0)
+  used              Float              @default(0)
+  pending           Float              @default(0)
+  remaining         Float              @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  schools           schools            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  employee_profiles employee_profiles  @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+  leave_types       leave_types        @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeProfileId, leaveTypeId, year])
+  @@index([schoolId])
+}
+
+model leave_applications {
+  id                 String             @id @default(cuid())
+  schoolId           String
+  employeeProfileId  String
+  leaveTypeId        String
+  startDate          DateTime
+  endDate            DateTime
+  totalDays          Float
+  reason             String
+  status             LeaveStatus        @default(PENDING)
+  appliedAt          DateTime           @default(now())
+  approvedById       String?
+  approvedAt         DateTime?
+  rejectionReason    String?
+  cancellationReason String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  schools            schools            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  employee_profiles  employee_profiles  @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+  leave_types        leave_types        @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  approvedBy         users?             @relation("LeaveApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([schoolId])
+  @@index([employeeProfileId])
+  @@index([status])
+}
+
+model salary_structures {
+  id                          String                        @id @default(cuid())
+  schoolId                    String
+  name                        String
+  code                        String?
+  description                 String?
+  baseSalary                  Decimal                       @default(0) @db.Decimal(12, 2)
+  isActive                    Boolean                       @default(true)
+  effectiveDate               DateTime                      @default(now())
+  endDate                     DateTime?
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
+
+  schools                     schools                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  salary_components           salary_components[]
+  employee_salary_assignments employee_salary_assignments[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model salary_components {
+  id                 String            @id @default(cuid())
+  salaryStructureId  String
+  name               String
+  type               ComponentType
+  calculationType    CalculationType
+  percentage         Decimal?          @db.Decimal(5, 2)
+  flatAmount         Decimal?          @db.Decimal(12, 2)
+  isTaxable          Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  salary_structures  salary_structures @relation(fields: [salaryStructureId], references: [id], onDelete: Cascade)
+
+  @@index([salaryStructureId])
+}
+
+model employee_salary_assignments {
+  id                String             @id @default(cuid())
+  schoolId          String
+  employeeProfileId String
+  salaryStructureId String
+  customBaseSalary  Decimal?           @db.Decimal(12, 2)
+  effectiveFrom     DateTime           @default(now())
+  effectiveTo       DateTime?
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  schools           schools            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  employee_profiles employee_profiles  @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+  salary_structures salary_structures  @relation(fields: [salaryStructureId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([employeeProfileId])
+}
+
+model payroll_periods {
+  id               String              @id @default(cuid())
+  schoolId         String
+  month            Int
+  year             Int
+  startDate        DateTime
+  endDate          DateTime
+  totalWorkingDays Int                 @default(30)
+  status           PayrollPeriodStatus @default(DRAFT)
+  finalizedAt      DateTime?
+  finalizedById    String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  schools          schools             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  finalizedBy      users?              @relation("PayrollPeriodFinalizer", fields: [finalizedById], references: [id], onDelete: SetNull)
+  payroll_records  payroll_records[]
+
+  @@unique([schoolId, month, year])
+  @@index([schoolId])
+}
+
+model payroll_records {
+  id                  String                @id @default(cuid())
+  schoolId            String
+  payrollPeriodId     String
+  employeeProfileId   String
+  baseSalary          Decimal               @default(0) @db.Decimal(12, 2)
+  grossEarnings       Decimal               @default(0) @db.Decimal(12, 2)
+  totalDeductions     Decimal               @default(0) @db.Decimal(12, 2)
+  netSalary           Decimal               @default(0) @db.Decimal(12, 2)
+  workingDays         Int                   @default(30)
+  presentDays         Float                 @default(30)
+  absentDays          Float                 @default(0)
+  paidLeaveDays       Float                 @default(0)
+  unpaidLeaveDays     Float                 @default(0)
+  overtimeHours       Float                 @default(0)
+  overtimeAmount      Decimal               @default(0) @db.Decimal(12, 2)
+  status              PayrollStatus         @default(DRAFT)
+  paymentDate         DateTime?
+  paymentMethod       String?
+  transactionReference String?
+  remarks             String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  schools             schools               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  payroll_periods     payroll_periods       @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  employee_profiles   employee_profiles     @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+  payroll_items       payroll_items[]
+  payroll_adjustments payroll_adjustments[]
+  payslips            payslips?
+
+  @@unique([payrollPeriodId, employeeProfileId])
+  @@index([schoolId])
+  @@index([payrollPeriodId])
+}
+
+model payroll_items {
+  id              String          @id @default(cuid())
+  payrollRecordId String
+  name            String
+  type            ComponentType
+  amount          Decimal         @default(0) @db.Decimal(12, 2)
+  remarks         String?
+
+  payroll_records payroll_records @relation(fields: [payrollRecordId], references: [id], onDelete: Cascade)
+
+  @@index([payrollRecordId])
+}
+
+model payroll_adjustments {
+  id              String          @id @default(cuid())
+  schoolId        String
+  payrollRecordId String
+  type            ComponentType
+  amount          Decimal         @default(0) @db.Decimal(12, 2)
+  reason          String
+  adjustedById    String
+  createdAt       DateTime        @default(now())
+
+  schools         schools         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  payroll_records payroll_records @relation(fields: [payrollRecordId], references: [id], onDelete: Cascade)
+  adjustedBy      users           @relation("PayrollAdjuster", fields: [adjustedById], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([payrollRecordId])
+}
+
+model payslips {
+  id                String            @id @default(cuid())
+  schoolId          String
+  payrollRecordId   String            @unique
+  employeeProfileId String
+  payslipNumber     String            @unique
+  month             Int
+  year              Int
+  grossSalary       Decimal           @db.Decimal(12, 2)
+  totalDeductions   Decimal           @db.Decimal(12, 2)
+  netSalary         Decimal           @db.Decimal(12, 2)
+  paymentStatus     PayrollStatus     @default(APPROVED)
+  generatedAt       DateTime          @default(now())
+  fileUrl           String?
+
+  schools           schools           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  payroll_records   payroll_records   @relation(fields: [payrollRecordId], references: [id], onDelete: Cascade)
+  employee_profiles employee_profiles @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([employeeProfileId])
+}
+
+model expense_categories {
+  id          String       @id @default(cuid())
+  schoolId    String
+  name        String
+  code        String?
+  description String?
+  budgetLimit Decimal?     @db.Decimal(12, 2)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  schools     schools      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  expenses    expenses[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model expenses {
+  id                 String              @id @default(cuid())
+  schoolId           String
+  categoryId         String
+  departmentId       String?
+  createdById        String
+  employeeProfileId  String?
+  title              String
+  description        String?
+  amount             Decimal             @db.Decimal(12, 2)
+  expenseDate        DateTime
+  vendor             String?
+  paymentMethod      String?
+  receiptUrl         String?
+  status             ExpenseStatus       @default(DRAFT)
+  approvedById       String?
+  approvedAt         DateTime?
+  rejectionReason    String?
+  paidAt             DateTime?
+  paymentReference   String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  schools            schools             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  expense_categories expense_categories  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  departments        departments?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  createdBy          users               @relation("ExpenseCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  approvedBy         users?              @relation("ExpenseApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  employee_profiles  employee_profiles?  @relation(fields: [employeeProfileId], references: [id], onDelete: SetNull)
+  expense_approvals  expense_approvals[]
+
+  @@index([schoolId])
+  @@index([categoryId])
+  @@index([status])
+}
+
+model expense_approvals {
+  id         String        @id @default(cuid())
+  expenseId  String
+  approverId String
+  step       Int           @default(1)
+  status     ExpenseStatus
+  comment    String?
+  actionDate DateTime      @default(now())
+
+  expenses   expenses      @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  approver   users         @relation("ExpenseStepApprover", fields: [approverId], references: [id], onDelete: Cascade)
+
+  @@index([expenseId])
+}
+
+
+

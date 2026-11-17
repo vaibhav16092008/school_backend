@@ -88,8 +88,14 @@ async function runAudit() {
             prisma_1.prisma.class_timetables.findFirst(),
             prisma_1.prisma.homework.findFirst(),
             prisma_1.prisma.homework_submissions.findFirst(),
+            prisma_1.prisma.vehicles.findFirst(),
+            prisma_1.prisma.transport_routes.findFirst(),
+            prisma_1.prisma.transport_stops.findFirst(),
+            prisma_1.prisma.drivers.findFirst(),
+            prisma_1.prisma.vehicle_assignments.findFirst(),
+            prisma_1.prisma.student_transport_allocations.findFirst(),
         ]);
-        record('DATABASE', 'Verify All 29 Prisma Models & Relations', true, 'All 29 relational models (including exams, timetable, homework, grading scales, results) query successfully.');
+        record('DATABASE', 'Verify All 35 Prisma Models & Relations', true, 'All 35 relational models (including vehicles, routes, stops, drivers, assignments, allocations) query successfully.');
     }
     catch (err) {
         record('DATABASE', 'Database Connectivity & Models', false, err.message);
@@ -1084,6 +1090,1059 @@ async function runAudit() {
         migrationClean = false;
     }
     record('DATABASE_MIGRATION', 'Prisma Versioned Migration Baseline Applied (0_init)', migrationClean, `Baseline migration 0_init confirmed recorded and applied in database _prisma_migrations table`);
+    // 22.11 Transport Management Migration Applied
+    let transportMigrationClean = false;
+    try {
+        const appliedMigrations = await prisma_1.prisma.$queryRaw `
+      SELECT migration_name FROM _prisma_migrations WHERE rolled_back_at IS NULL
+    `;
+        transportMigrationClean = appliedMigrations.some((m) => m.migration_name.includes('add_transport_management'));
+    }
+    catch (err) {
+        transportMigrationClean = false;
+    }
+    record('DATABASE_MIGRATION', 'Prisma Versioned Transport Migration Applied', transportMigrationClean, `Transport migration add_transport_management confirmed recorded and applied in _prisma_migrations`);
+    // ==========================================
+    // 24. TRANSPORT MANAGEMENT (PHASE 5.1)
+    // ==========================================
+    // 24.1 Vehicle Registration & CRUD
+    const vehicleReg = `BUS-${Date.now().toString().slice(-4)}`;
+    const createVehRes = await apiRequest('/school/transport/vehicles', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            registrationNumber: vehicleReg,
+            name: 'Springfield School Bus #10',
+            type: 'BUS',
+            capacity: 40,
+            manufacturer: 'Tata Motors',
+            model: 'Starbus Ultra',
+            status: 'ACTIVE',
+            insuranceExpiry: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
+            fitnessExpiry: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+        }),
+    });
+    const createdVehicle = createVehRes.data?.data;
+    record('TRANSPORT', 'Vehicle Registration (POST /school/transport/vehicles)', createVehRes.status === 201 && createdVehicle?.registrationNumber === vehicleReg, `Status ${createVehRes.status}: Registered vehicle '${vehicleReg}' with 40 seats capacity`);
+    // 24.2 Duplicate Vehicle Registration Prevention
+    const dupVehRes = await apiRequest('/school/transport/vehicles', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            registrationNumber: vehicleReg,
+            name: 'Duplicate Bus',
+            capacity: 30,
+        }),
+    });
+    record('TRANSPORT', 'Duplicate Vehicle Registration Guard', dupVehRes.status === 400, `Status ${dupVehRes.status}: Blocked duplicate vehicle registration in same school`);
+    // 24.3 Route Creation & Stop Sequence Integrity
+    const routeCode = `RT-${Date.now().toString().slice(-4)}`;
+    const createRouteRes = await apiRequest('/school/transport/routes', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            code: routeCode,
+            name: 'Springfield West Corridor',
+            startPoint: 'West Gate Terminal',
+            destination: 'Springfield High Campus',
+            journeyDurationMinutes: 35,
+            status: 'ACTIVE',
+            stops: [
+                { name: 'West Metro Gate', sequence: 1, pickupTime: '07:15', dropTime: '15:45', fare: 1200 },
+                { name: 'Oak Street Junction', sequence: 2, pickupTime: '07:30', dropTime: '15:30', fare: 1500 },
+            ],
+        }),
+    });
+    const createdRoute = createRouteRes.data?.data;
+    record('TRANSPORT', 'Route & Ordered Stops Creation (POST /school/transport/routes)', createRouteRes.status === 201 && createdRoute?.stops?.length === 2, `Status ${createRouteRes.status}: Created route '${routeCode}' with 2 sequential stops`);
+    // 24.4 Duplicate Stop Sequence Prevention
+    const dupStopRes = await apiRequest('/school/transport/stops', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            routeId: createdRoute?.id,
+            name: 'Conflicting Stop',
+            sequence: 1,
+            fare: 1000,
+        }),
+    });
+    record('TRANSPORT', 'Route Stop Duplicate Sequence Guard', dupStopRes.status === 400, `Status ${dupStopRes.status}: Blocked conflicting sequence #1 on route '${routeCode}'`);
+    // 24.5 Driver Profile Creation & License Expiry Tracking
+    const drvEmpId = `DRV-${Date.now().toString().slice(-4)}`;
+    const drvLicNum = `DL-${Date.now().toString().slice(-6)}`;
+    const createDrvRes = await apiRequest('/school/transport/drivers', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            employeeId: drvEmpId,
+            firstName: 'Rajesh',
+            lastName: 'Verma',
+            phone: '+91 98765 12345',
+            licenseNumber: drvLicNum,
+            licenseExpiry: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString(),
+            status: 'ACTIVE',
+        }),
+    });
+    const createdDriver = createDrvRes.data?.data;
+    record('TRANSPORT', 'Driver Profile Creation (POST /school/transport/drivers)', createDrvRes.status === 201 && createdDriver?.employeeId === drvEmpId, `Status ${createDrvRes.status}: Registered driver '${drvEmpId}' with commercial license '${drvLicNum}'`);
+    // 24.6 Vehicle & Route Assignment
+    const createAssignRes = await apiRequest('/school/transport/assignments', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            vehicleId: createdVehicle?.id,
+            routeId: createdRoute?.id,
+            driverId: createdDriver?.id,
+            attendantName: 'Manoj Helper',
+            attendantPhone: '+91 91234 56789',
+            effectiveDate: new Date().toISOString(),
+            status: 'ACTIVE',
+        }),
+    });
+    const createdAssignment = createAssignRes.data?.data;
+    record('TRANSPORT', 'Vehicle & Driver Route Assignment (POST /school/transport/assignments)', createAssignRes.status === 201 && createdAssignment?.status === 'ACTIVE', `Status ${createAssignRes.status}: Assigned vehicle '${vehicleReg}' and driver '${drvEmpId}' to route '${routeCode}'`);
+    // 24.7 Overlapping Assignment Conflict Prevention (Vehicle Conflict)
+    const routeCode2 = `RT-${Date.now().toString().slice(-3)}B`;
+    const route2Res = await apiRequest('/school/transport/routes', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            code: routeCode2,
+            name: 'Springfield East Line',
+            startPoint: 'East End',
+            destination: 'Campus',
+            status: 'ACTIVE',
+        }),
+    });
+    const createdRoute2 = route2Res.data?.data;
+    const overlapVehAssignRes = await apiRequest('/school/transport/assignments', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            vehicleId: createdVehicle?.id,
+            routeId: createdRoute2?.id,
+            driverId: createdDriver?.id,
+        }),
+    });
+    record('TRANSPORT', 'Vehicle Assignment Overlap Conflict Guard', overlapVehAssignRes.status === 400, `Status ${overlapVehAssignRes.status}: Blocked assigning vehicle '${vehicleReg}' while actively assigned elsewhere`);
+    // 24.8 Student Transport Allocation with Automated Fee Invoice Generation
+    const stop1 = createdRoute?.stops?.[0];
+    const stop2 = createdRoute?.stops?.[1];
+    const createAllocRes = await apiRequest('/school/transport/student-allocations', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            studentId: createdStudent?.id,
+            academicYearId: testYear?.id,
+            routeId: createdRoute?.id,
+            pickupStopId: stop1?.id,
+            dropStopId: stop2?.id,
+            fare: 1500,
+            generateInvoice: true,
+            status: 'ACTIVE',
+        }),
+    });
+    const createdAlloc = createAllocRes.data?.data;
+    const hasInvoice = createdAlloc?.invoiceId && createdAlloc?.invoice?.invoiceNumber?.startsWith('TRN-');
+    record('TRANSPORT', 'Student Transport Allocation & Fee Invoice Generation (POST /school/transport/student-allocations)', createAllocRes.status === 201 && Boolean(hasInvoice) && Number(createdAlloc?.invoice?.balance) === 1500, `Status ${createAllocRes.status}: Allocated student to route '${routeCode}', generated invoice '${createdAlloc?.invoice?.invoiceNumber}' with balance ₹1500`);
+    // 24.9 Duplicate Student Allocation Prevention
+    const dupAllocRes = await apiRequest('/school/transport/student-allocations', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            studentId: createdStudent?.id,
+            academicYearId: testYear?.id,
+            routeId: createdRoute?.id,
+            pickupStopId: stop1?.id,
+            dropStopId: stop2?.id,
+        }),
+    });
+    record('TRANSPORT', 'Student Duplicate Transport Allocation Guard', dupAllocRes.status === 400, `Status ${dupAllocRes.status}: Blocked duplicate active transport allocation for student in same academic year`);
+    // 24.10 Multi-Tenant IDOR Isolation: Cross-School Read & Write Rejected
+    const idorVehRes = await apiRequest(`/school/transport/vehicles/${createdVehicle?.id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${oakridgeAdminToken}` },
+    });
+    const idorAllocRes = await apiRequest('/school/transport/student-allocations', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${oakridgeAdminToken}` },
+        body: JSON.stringify({
+            studentId: createdStudent?.id,
+            academicYearId: testYear?.id,
+            routeId: createdRoute?.id,
+            pickupStopId: stop1?.id,
+            dropStopId: stop2?.id,
+        }),
+    });
+    record('TRANSPORT_SECURITY', 'Transport Multi-Tenant IDOR Isolation Guard (Cross-School Access)', idorVehRes.status === 404 && (idorAllocRes.status === 404 || idorAllocRes.status === 400), `Vehicle read status: ${idorVehRes.status} (404 Not Found), Cross-school allocation status: ${idorAllocRes.status}`);
+    // 24.11 Transport Dashboard Analytics & Expiry Alerts
+    const dashRes = await apiRequest('/school/transport/dashboard', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+    });
+    const dashData = dashRes.data?.data;
+    const hasExpiringVeh = dashData?.expiringVehicles?.some((v) => v.id === createdVehicle?.id);
+    const hasExpiringDrv = dashData?.expiringDrivers?.some((d) => d.id === createdDriver?.id);
+    record('TRANSPORT', 'Transport Dashboard Analytics & Expiry Alerts (GET /school/transport/dashboard)', dashRes.status === 200 && dashData?.summary?.totalVehicles >= 1 && Boolean(hasExpiringVeh) && Boolean(hasExpiringDrv), `Status ${dashRes.status}: Dashboard returned ${dashData?.summary?.totalVehicles} vehicles, ${dashData?.summary?.totalRoutes} routes, and identified expiring vehicle doc + expiring driver license`);
+    // 24.12 CSV Data Export Generation
+    const csvRes = await apiRequest('/school/transport/reports?reportType=vehicles&format=csv', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+    });
+    const isCsvContent = csvRes.headers.get('content-type')?.includes('text/csv');
+    record('TRANSPORT', 'Transport Reports CSV Export (GET /school/transport/reports?format=csv)', csvRes.status === 200 && Boolean(isCsvContent), `Status ${csvRes.status}: Generated vehicle fleet CSV report with Content-Type '${csvRes.headers.get('content-type')}'`);
+    // 24.13 Safe Deletion Guard (Cannot delete vehicle or route with active allocations/assignments)
+    const deleteVehBlockedRes = await apiRequest(`/school/transport/vehicles/${createdVehicle?.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+    });
+    record('TRANSPORT', 'Vehicle Deletion Active Assignment Guard', deleteVehBlockedRes.status === 400, `Status ${deleteVehBlockedRes.status}: Blocked deleting vehicle while active assignments exist ("${deleteVehBlockedRes.data?.message}")`);
+    // 24.14 Cleanup Transport Test Records
+    if (createdAlloc) {
+        if (createdAlloc.invoiceId) {
+            await prisma_1.prisma.student_fee_invoices.delete({ where: { id: createdAlloc.invoiceId } }).catch(() => { });
+        }
+        await prisma_1.prisma.student_transport_allocations.delete({ where: { id: createdAlloc.id } }).catch(() => { });
+    }
+    if (createdAssignment) {
+        await prisma_1.prisma.vehicle_assignments.delete({ where: { id: createdAssignment.id } }).catch(() => { });
+    }
+    if (createdRoute2) {
+        await prisma_1.prisma.transport_routes.delete({ where: { id: createdRoute2.id } }).catch(() => { });
+    }
+    if (createdRoute) {
+        await prisma_1.prisma.transport_routes.delete({ where: { id: createdRoute.id } }).catch(() => { });
+    }
+    if (createdDriver) {
+        await prisma_1.prisma.drivers.delete({ where: { id: createdDriver.id } }).catch(() => { });
+    }
+    if (createdVehicle) {
+        await prisma_1.prisma.vehicles.delete({ where: { id: createdVehicle.id } }).catch(() => { });
+    }
+    // ==========================================
+    // 25. PHASE 5.2 — LIBRARY MANAGEMENT SYSTEM AUDIT
+    // ==========================================
+    console.log('\n--- Running Section 25: Library Management System ---');
+    // Clean up any lingering library test items
+    if (spSchool?.id) {
+        await prisma_1.prisma.library_reservations.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.library_fine_adjustments.deleteMany({ where: { fine: { schoolId: spSchool.id } } }).catch(() => { });
+        await prisma_1.prisma.library_fines.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.library_issues.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.library_members.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.library_book_copies.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.library_books.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+    }
+    // 25.1 Category Creation & Duplicate Rejection
+    const catCode = `CS-${Date.now().toString().slice(-4)}`;
+    const createCatRes = await apiRequest('/school/library/categories', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: `Computer Science & Algorithms ${catCode}`,
+            code: catCode,
+            description: 'Advanced CS textbooks and journals',
+            isActive: true,
+        }),
+    });
+    const createdLibCat = createCatRes.data?.data;
+    record('LIBRARY_CATEGORY', 'Category Creation (POST /school/library/categories)', createCatRes.status === 201 && createdLibCat?.code === catCode, `Status ${createCatRes.status}: Created category '${createdLibCat?.name}' (${createdLibCat?.id})`);
+    const dupCatRes = await apiRequest('/school/library/categories', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: `Different Name`,
+            code: catCode,
+        }),
+    });
+    record('LIBRARY_CATEGORY', 'Category Duplicate Code Guard', dupCatRes.status === 400, `Status ${dupCatRes.status}: Rejected duplicate category code '${catCode}'`);
+    // 25.2 Author and Publisher Creation
+    const createAuthorRes = await apiRequest('/school/library/authors', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: `Donald E. Knuth ${Date.now().toString().slice(-4)}`,
+            biography: 'Legendary computer scientist and mathematician',
+            nationality: 'American',
+        }),
+    });
+    const createdAuthor = createAuthorRes.data?.data;
+    record('LIBRARY_AUTHOR', 'Author Creation (POST /school/library/authors)', createAuthorRes.status === 201 && Boolean(createdAuthor?.id), `Status ${createAuthorRes.status}: Created author '${createdAuthor?.name}'`);
+    const createPubRes = await apiRequest('/school/library/publishers', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: `Addison-Wesley Professional ${Date.now().toString().slice(-4)}`,
+            contactPerson: 'David Pearson',
+            email: 'pearson@aw.example.com',
+            phone: '+1 617 555 0199',
+        }),
+    });
+    const createdPub = createPubRes.data?.data;
+    record('LIBRARY_PUBLISHER', 'Publisher Creation (POST /school/library/publishers)', createPubRes.status === 201 && Boolean(createdPub?.id), `Status ${createPubRes.status}: Created publisher '${createdPub?.name}'`);
+    // 25.3 Book Creation with ISBN Validation & Physical Copies Initialization
+    const testIsbn = `9780201896831`;
+    const startingAcc = `ACC-${Date.now().toString().slice(-5)}`;
+    const createBookRes = await apiRequest('/school/library/books', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            title: 'The Art of Computer Programming: Fundamental Algorithms',
+            isbn: testIsbn,
+            categoryId: createdLibCat?.id,
+            authorId: createdAuthor?.id,
+            publisherId: createdPub?.id,
+            edition: '3rd Edition',
+            publicationYear: 1997,
+            language: 'English',
+            numberOfPages: 672,
+            shelfLocation: 'Shelf CS-1',
+            rackNumber: 'Rack 4',
+            initialCopies: 3,
+            startingAccessionNumber: startingAcc,
+            copyPrice: 1200,
+        }),
+    });
+    const createdBook = createBookRes.data?.data;
+    record('LIBRARY_BOOK', 'Book Creation with Auto-Generated Copies (POST /school/library/books)', createBookRes.status === 201 &&
+        createdBook?.totalCopies === 3 &&
+        createdBook?.availableCopies === 3 &&
+        createdBook?.copies?.length === 3, `Status ${createBookRes.status}: Catalogued '${createdBook?.title}' with ${createdBook?.totalCopies} copies starting from '${startingAcc}'`);
+    // 25.4 Duplicate ISBN Prevention
+    const dupIsbnRes = await apiRequest('/school/library/books', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            title: 'Another Duplicate Book',
+            isbn: testIsbn,
+            categoryId: createdLibCat?.id,
+        }),
+    });
+    record('LIBRARY_BOOK', 'Duplicate ISBN Rejection Guard', dupIsbnRes.status === 400, `Status ${dupIsbnRes.status}: Blocked registering duplicate ISBN '${testIsbn}'`);
+    // 25.5 Physical Copy Creation & Accession Uniqueness
+    const manualAcc = `ACC-MANUAL-${Date.now().toString().slice(-4)}`;
+    const createCopyRes = await apiRequest('/school/library/copies', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            bookId: createdBook?.id,
+            accessionNumber: manualAcc,
+            barcode: `BC-${Date.now().toString().slice(-6)}`,
+            condition: 'NEW',
+            status: 'AVAILABLE',
+            price: 1200,
+        }),
+    });
+    const createdCopy = createCopyRes.data?.data;
+    record('LIBRARY_COPY', 'Physical Copy Creation (POST /school/library/copies)', createCopyRes.status === 201 && createdCopy?.accessionNumber === manualAcc, `Status ${createCopyRes.status}: Added copy with accession number '${manualAcc}'`);
+    const dupCopyRes = await apiRequest('/school/library/copies', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            bookId: createdBook?.id,
+            accessionNumber: manualAcc,
+        }),
+    });
+    record('LIBRARY_COPY', 'Accession Number Uniqueness Guard', dupCopyRes.status === 400, `Status ${dupCopyRes.status}: Blocked duplicate accession number '${manualAcc}'`);
+    // 25.6 Library Member Enrollment Linked to Existing Student
+    const memberCardNo = `LIB-${Date.now().toString().slice(-6)}`;
+    const createMemberRes = await apiRequest('/school/library/members', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            memberType: 'STUDENT',
+            studentId: createdStudent?.id,
+            cardBarcodeNumber: memberCardNo,
+            maxAllowedBooks: 2,
+            maxBorrowingDays: 7,
+            status: 'ACTIVE',
+        }),
+    });
+    const createdMember = createMemberRes.data?.data;
+    record('LIBRARY_MEMBER', 'Student Library Member Registration (POST /school/library/members)', createMemberRes.status === 201 && createdMember?.cardBarcodeNumber === memberCardNo, `Status ${createMemberRes.status}: Enrolled student ${createdStudent?.firstName} as library member '${memberCardNo}'`);
+    // 25.7 Book Issue Atomic Transaction
+    const copy1 = createdBook?.copies?.[0];
+    const copy2 = createdBook?.copies?.[1];
+    const copy3 = createdBook?.copies?.[2];
+    // Set due date to 5 days ago to test overdue calculation upon return
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    const issueRes = await apiRequest('/school/library/issues', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            memberId: createdMember?.id,
+            bookCopyId: copy1?.id,
+            issueDate: tenDaysAgo.toISOString(),
+            dueDate: fiveDaysAgo.toISOString(),
+            issueRemarks: 'Semester reference book issue',
+        }),
+    });
+    const createdIssue = issueRes.data?.data;
+    record('LIBRARY_ISSUE', 'Book Issue Atomic Transaction (POST /school/library/issues)', issueRes.status === 201 &&
+        createdIssue?.status === 'ISSUED' &&
+        createdIssue?.bookCopy?.status === 'ISSUED', `Status ${issueRes.status}: Issued copy '${copy1?.accessionNumber}' to member '${memberCardNo}' with due date 5 days ago`);
+    // 25.8 Duplicate Copy Issue & Quota Enforcement
+    const dupIssueRes = await apiRequest('/school/library/issues', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            memberId: createdMember?.id,
+            bookCopyId: copy1?.id,
+            dueDate: new Date(Date.now() + 864000000).toISOString(),
+        }),
+    });
+    record('LIBRARY_ISSUE', 'Unavailable Copy Re-Issue Guard', dupIssueRes.status === 400, `Status ${dupIssueRes.status}: Blocked issuing already issued copy ('${dupIssueRes.data?.message}')`);
+    // Issue second copy (hits member quota of 2)
+    const issue2Res = await apiRequest('/school/library/issues', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            memberId: createdMember?.id,
+            bookCopyId: copy2?.id,
+            dueDate: new Date(Date.now() + 864000000).toISOString(),
+        }),
+    });
+    const createdIssue2 = issue2Res.data?.data;
+    // Attempting third issue exceeds limit of 2
+    const quotaExceededRes = await apiRequest('/school/library/issues', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            memberId: createdMember?.id,
+            bookCopyId: copy3?.id,
+            dueDate: new Date(Date.now() + 864000000).toISOString(),
+        }),
+    });
+    record('LIBRARY_ISSUE', 'Member Borrowing Limit Quota Enforcement Guard', issue2Res.status === 201 && quotaExceededRes.status === 400, `Status ${quotaExceededRes.status}: Successfully blocked issuing beyond max allowance of 2 books ('${quotaExceededRes.data?.message}')`);
+    // 25.9 Book Return Transaction with Overdue Fine Assessment
+    const returnRes = await apiRequest(`/school/library/issues/${createdIssue?.id}/return`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            conditionOnReturn: 'GOOD',
+            returnRemarks: 'Returned safely, late by 5 days',
+        }),
+    });
+    const returnData = returnRes.data?.data;
+    record('LIBRARY_RETURN', 'Book Return Transaction & Overdue Fine Assessment (POST /school/library/issues/:id/return)', returnRes.status === 200 &&
+        returnData?.issue?.status === 'RETURNED' &&
+        returnData?.copy?.status === 'AVAILABLE' &&
+        returnData?.fineSummary?.totalFinesCreated > 0, `Status ${returnRes.status}: Book returned; generated ₹${returnData?.fineSummary?.totalFinesCreated} overdue fine for ${returnData?.issue?.overdueDays} late days`);
+    // 25.10 Damaged Copy Return & Damage Fine Creation
+    const damageReturnRes = await apiRequest(`/school/library/issues/${createdIssue2?.id}/return`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            conditionOnReturn: 'DAMAGED',
+            isDamaged: true,
+            damageFineAmount: 250,
+            returnRemarks: 'Spine damage reported',
+        }),
+    });
+    const damageData = damageReturnRes.data?.data;
+    record('LIBRARY_RETURN', 'Damaged Copy Return & Damage Fine Assessment', damageReturnRes.status === 200 &&
+        damageData?.issue?.status === 'DAMAGED' &&
+        damageData?.copy?.status === 'DAMAGED' &&
+        damageData?.fineSummary?.damageFine > 0, `Status ${damageReturnRes.status}: Marked copy DAMAGED and assessed ₹${damageData?.fineSummary?.damageFine} damage fine`);
+    // 25.11 Fine Ledger Payment & Waiver Adjustments
+    const overdueFineId = returnData?.fineSummary?.fines?.[0]?.id;
+    const payFineRes = await apiRequest(`/school/library/fines/${overdueFineId}/adjust`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            adjustmentType: 'PAYMENT',
+            amount: 5,
+            paymentMethod: 'CASH',
+            reason: 'Front counter cash collection',
+        }),
+    });
+    const paidFineData = payFineRes.data?.data;
+    record('LIBRARY_FINES', 'Fine Partial/Full Payment Adjustment (POST /school/library/fines/:id/adjust)', payFineRes.status === 200 && Number(paidFineData?.paidAmount) >= 5, `Status ${payFineRes.status}: Processed ₹5 payment; remaining balance: ₹${paidFineData?.balanceAmount}`);
+    const damageFineId = damageData?.fineSummary?.fines?.[0]?.id;
+    const waiveFineRes = await apiRequest(`/school/library/fines/${damageFineId}/adjust`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            adjustmentType: 'WAIVER',
+            amount: 250,
+            reason: 'Principal approved goodwill waiver',
+        }),
+    });
+    const waivedFineData = waiveFineRes.data?.data;
+    record('LIBRARY_FINES', 'Fine Authorized Waiver Adjustment', waiveFineRes.status === 200 &&
+        waivedFineData?.status === 'WAIVED' &&
+        Number(waivedFineData?.balanceAmount) === 0, `Status ${waiveFineRes.status}: Waived full ₹250 fine; status: ${waivedFineData?.status}`);
+    // 25.12 Reservation Queue Management
+    // Register second member
+    const member2CardNo = `LIB-${Date.now().toString().slice(-6)}-T`;
+    const createMember2Res = await apiRequest('/school/library/members', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            memberType: 'FACULTY',
+            teacherId: createdTeacher?.id,
+            cardBarcodeNumber: member2CardNo,
+            maxAllowedBooks: 5,
+            maxBorrowingDays: 30,
+        }),
+    });
+    const createdMember2 = createMember2Res.data?.data;
+    const reserveRes = await apiRequest('/school/library/reservations', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            bookId: createdBook?.id,
+            memberId: createdMember2?.id,
+        }),
+    });
+    const createdResv = reserveRes.data?.data;
+    record('LIBRARY_RESERVATION', 'Book Reservation Hold Placement (POST /school/library/reservations)', reserveRes.status === 201 && createdResv?.status === 'PENDING' && createdResv?.queuePosition === 1, `Status ${reserveRes.status}: Placed reservation for member '${member2CardNo}' at queue position #${createdResv?.queuePosition}`);
+    // 25.13 Multi-Tenant IDOR Security Isolation
+    const idorBookRes = await apiRequest(`/school/library/books/${createdBook?.id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${oakridgeAdminToken}` },
+    });
+    const idorCopyRes = await apiRequest(`/school/library/copies/${createdCopy?.id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${oakridgeAdminToken}` },
+    });
+    const idorMemberRes = await apiRequest(`/school/library/members/${createdMember?.id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${oakridgeAdminToken}` },
+    });
+    record('LIBRARY_SECURITY', 'Library Multi-Tenant IDOR Isolation Guard (Cross-School Access)', idorBookRes.status === 404 && idorCopyRes.status === 404 && idorMemberRes.status === 404, `Book status: ${idorBookRes.status}, Copy status: ${idorCopyRes.status}, Member status: ${idorMemberRes.status} (All returned 404 Not Found)`);
+    // 25.14 Streaming CSV Report Export
+    const libCsvRes = await apiRequest('/school/library/reports?reportType=catalogue&format=csv', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+    });
+    const isLibCsvContent = libCsvRes.headers.get('content-type')?.includes('text/csv');
+    record('LIBRARY_REPORTS', 'Streaming CSV Export (GET /school/library/reports?reportType=catalogue&format=csv)', libCsvRes.status === 200 && Boolean(isLibCsvContent), `Status ${libCsvRes.status}: Successfully streamed catalogue CSV with Content-Type '${libCsvRes.headers.get('content-type')}'`);
+    // 25.15 Safe Deletion Protections
+    const deleteCatBlocked = await apiRequest(`/school/library/categories/${createdLibCat?.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+    });
+    record('LIBRARY_INTEGRITY', 'Category Safe Deletion Guard (Books Linked)', deleteCatBlocked.status === 400, `Status ${deleteCatBlocked.status}: Blocked deleting category with linked catalogue titles ('${deleteCatBlocked.data?.message}')`);
+    // 25.16 Cleanup Library Test Artifacts
+    if (createdResv) {
+        await prisma_1.prisma.library_reservations.delete({ where: { id: createdResv.id } }).catch(() => { });
+    }
+    if (overdueFineId) {
+        await prisma_1.prisma.library_fine_adjustments.deleteMany({ where: { fineId: overdueFineId } }).catch(() => { });
+        await prisma_1.prisma.library_fines.delete({ where: { id: overdueFineId } }).catch(() => { });
+    }
+    if (damageFineId) {
+        await prisma_1.prisma.library_fine_adjustments.deleteMany({ where: { fineId: damageFineId } }).catch(() => { });
+        await prisma_1.prisma.library_fines.delete({ where: { id: damageFineId } }).catch(() => { });
+    }
+    if (createdIssue2) {
+        await prisma_1.prisma.library_issues.delete({ where: { id: createdIssue2.id } }).catch(() => { });
+    }
+    if (createdIssue) {
+        await prisma_1.prisma.library_issues.delete({ where: { id: createdIssue.id } }).catch(() => { });
+    }
+    if (createdMember2) {
+        await prisma_1.prisma.library_members.delete({ where: { id: createdMember2.id } }).catch(() => { });
+    }
+    if (createdMember) {
+        await prisma_1.prisma.library_members.delete({ where: { id: createdMember.id } }).catch(() => { });
+    }
+    if (createdCopy) {
+        await prisma_1.prisma.library_book_copies.delete({ where: { id: createdCopy.id } }).catch(() => { });
+    }
+    if (createdBook) {
+        await prisma_1.prisma.library_book_copies.deleteMany({ where: { bookId: createdBook.id } }).catch(() => { });
+        await prisma_1.prisma.library_books.delete({ where: { id: createdBook.id } }).catch(() => { });
+    }
+    if (createdAuthor) {
+        await prisma_1.prisma.library_authors.delete({ where: { id: createdAuthor.id } }).catch(() => { });
+    }
+    if (createdPub) {
+        await prisma_1.prisma.library_publishers.delete({ where: { id: createdPub.id } }).catch(() => { });
+    }
+    if (createdLibCat) {
+        await prisma_1.prisma.library_categories.delete({ where: { id: createdLibCat.id } }).catch(() => { });
+    }
+    // ==========================================
+    // 26. PHASE 5.3 — INVENTORY & ASSET MANAGEMENT SYSTEM AUDIT
+    // ==========================================
+    console.log('\n--- Running Section 26: Inventory & Asset Management System ---');
+    // Pre-cleanup leftover inventory test artifacts
+    try {
+        await prisma_1.prisma.inventory_purchase_order_items.deleteMany({ where: { purchaseOrder: { schoolId: spSchool.id } } }).catch(() => { });
+        await prisma_1.prisma.inventory_purchase_orders.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.inventory_maintenance_logs.deleteMany({ where: { ticket: { schoolId: spSchool.id } } }).catch(() => { });
+        await prisma_1.prisma.inventory_maintenance_tickets.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.inventory_depreciations.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.inventory_asset_assignments.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.inventory_assets.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.inventory_stock_transfers.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.inventory_stock_movements.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.inventory_items.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.inventory_suppliers.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.inventory_locations.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+        await prisma_1.prisma.inventory_categories.deleteMany({ where: { schoolId: spSchool.id } }).catch(() => { });
+    }
+    catch { }
+    // 26.1 Inventory Dashboard KPI
+    const invDashRes = await apiRequest('/school/inventory/dashboard', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+    });
+    const invDashData = invDashRes.data?.data;
+    record('INVENTORY_DASHBOARD', 'Inventory Dashboard & Metrics (GET /school/inventory/dashboard)', invDashRes.status === 200 && invDashData?.metrics !== undefined, `Status ${invDashRes.status}: Metrics retrieved (Total items: ${invDashData?.metrics?.totalItems})`);
+    // 26.2 Category Creation & Duplicate Guard
+    const invCatCode = `CAT-${Date.now().toString().slice(-4)}`;
+    const createInvCatRes = await apiRequest('/school/inventory/categories', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: `Laboratory Apparatus & Glassware ${invCatCode}`,
+            code: invCatCode,
+            description: 'Science laboratory equipment and consumables',
+            isActive: true,
+        }),
+    });
+    const createdInvCat = createInvCatRes.data?.data;
+    record('INVENTORY_CATEGORY', 'Category Creation (POST /school/inventory/categories)', createInvCatRes.status === 201 && createdInvCat?.code === invCatCode, `Status ${createInvCatRes.status}: Created category '${createdInvCat?.name}' (${createdInvCat?.id})`);
+    const dupInvCatRes = await apiRequest('/school/inventory/categories', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: `Different Name`,
+            code: invCatCode,
+        }),
+    });
+    record('INVENTORY_CATEGORY', 'Category Duplicate Code Conflict Guard', dupInvCatRes.status === 409, `Status ${dupInvCatRes.status}: Rejected duplicate category code '${invCatCode}' with 409 Conflict`);
+    // 26.3 Storage Location Creation
+    const locCode1 = `LAB-${Date.now().toString().slice(-4)}`;
+    const locCode2 = `STR-${Date.now().toString().slice(-4)}`;
+    const createLoc1Res = await apiRequest('/school/inventory/locations', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: `Physics & Electronics Lab ${locCode1}`,
+            code: locCode1,
+            building: 'Science Block',
+            floor: '2nd Floor',
+            roomNumber: 'LAB-204',
+            description: 'Main laboratory storeroom and benches',
+            isActive: true,
+        }),
+    });
+    const createdLoc1 = createLoc1Res.data?.data;
+    const createLoc2Res = await apiRequest('/school/inventory/locations', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: `Central Storeroom B ${locCode2}`,
+            code: locCode2,
+            building: 'Administration Block',
+            floor: 'Basement',
+            roomNumber: 'STR-B01',
+            isActive: true,
+        }),
+    });
+    const createdLoc2 = createLoc2Res.data?.data;
+    record('INVENTORY_LOCATION', 'Storage Location Registration (POST /school/inventory/locations)', createLoc1Res.status === 201 && createLoc2Res.status === 201, `Status ${createLoc1Res.status}: Registered location '${createdLoc1?.name}' and '${createdLoc2?.name}'`);
+    // 26.4 Vendor / Supplier Creation
+    const suppName = `Precision Scientific Suppliers ${Date.now().toString().slice(-4)}`;
+    const createSuppRes = await apiRequest('/school/inventory/suppliers', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: suppName,
+            contactPerson: 'Dr. Ramesh Nair',
+            email: 'sales@precisionsci.com',
+            phone: '+91 98450 11223',
+            address: 'Plot 42, Electronic City Phase 1, Bangalore',
+            gstin: '29AABCP1234D1Z5',
+            isActive: true,
+        }),
+    });
+    const createdSupp = createSuppRes.data?.data;
+    record('INVENTORY_SUPPLIER', 'Supplier Registration (POST /school/inventory/suppliers)', createSuppRes.status === 201 && createdSupp?.gstin === '29AABCP1234D1Z5', `Status ${createSuppRes.status}: Registered vendor '${createdSupp?.name}' (${createdSupp?.id})`);
+    // 26.5 Item Catalogue Creation (Consumable with Initial Stock)
+    const itemSku = `LAB-BEAK-${Date.now().toString().slice(-4)}`;
+    const createItemRes = await apiRequest('/school/inventory/items', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: 'Borosil 500ml Glass Beakers',
+            sku: itemSku,
+            categoryId: createdInvCat?.id,
+            itemType: 'CONSUMABLE',
+            unitOfMeasurement: 'PCS',
+            purchasePrice: 150,
+            minStockThreshold: 10,
+            initialStock: 50,
+            primaryLocationId: createdLoc1?.id,
+            primarySupplierId: createdSupp?.id,
+            brand: 'Borosil',
+            modelNumber: 'BR-500',
+        }),
+    });
+    const createdItem = createItemRes.data?.data;
+    record('INVENTORY_ITEM', 'Item Creation with Initial Stock & Auto-Inward (POST /school/inventory/items)', createItemRes.status === 201 && createdItem?.currentStock === 50, `Status ${createItemRes.status}: Created item '${createdItem?.name}' with initialStock=50`);
+    // 26.6 Duplicate SKU Conflict Guard
+    const dupSkuRes = await apiRequest('/school/inventory/items', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: 'Duplicate SKU Item',
+            sku: itemSku,
+            categoryId: createdInvCat?.id,
+            unitOfMeasurement: 'PCS',
+        }),
+    });
+    record('INVENTORY_ITEM', 'Duplicate SKU Conflict Guard', dupSkuRes.status === 409, `Status ${dupSkuRes.status}: Successfully rejected duplicate SKU '${itemSku}' with 409 Conflict`);
+    // 26.7 Stock Inward Receipt (Atomic Increment)
+    const inwardRes = await apiRequest('/school/inventory/stock/inward', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            itemId: createdItem?.id,
+            quantity: 25,
+            unitPrice: 150,
+            targetLocationId: createdLoc1?.id,
+            referenceNumber: 'INV-2025-001',
+            reason: 'Mid-term restock receipt',
+        }),
+    });
+    const inwardData = inwardRes.data?.data;
+    record('INVENTORY_STOCK', 'Stock Inward Atomic Increment (POST /school/inventory/stock/inward)', inwardRes.status === 201 && inwardData?.item?.currentStock === 75, `Status ${inwardRes.status}: Increased stock from 50 to 75 (+25 PCS)`);
+    // 26.8 Stock Outward Issue (Atomic Decrement)
+    const outwardRes = await apiRequest('/school/inventory/stock/outward', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            itemId: createdItem?.id,
+            quantity: 15,
+            sourceLocationId: createdLoc1?.id,
+            referenceNumber: 'REQ-LAB-01',
+            reason: 'Issued to Chemistry Practical Class',
+        }),
+    });
+    const outwardData = outwardRes.data?.data;
+    record('INVENTORY_STOCK', 'Stock Outward Atomic Decrement (POST /school/inventory/stock/outward)', outwardRes.status === 201 && outwardData?.item?.currentStock === 60, `Status ${outwardRes.status}: Decreased stock from 75 to 60 (-15 PCS)`);
+    // 26.9 Stock Outward Insufficient Stock Rejection
+    const excessOutwardRes = await apiRequest('/school/inventory/stock/outward', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            itemId: createdItem?.id,
+            quantity: 9999,
+            reason: 'Attempted overdraft',
+        }),
+    });
+    record('INVENTORY_STOCK', 'Negative Stock Prevention Guard', excessOutwardRes.status === 400, `Status ${excessOutwardRes.status}: Successfully blocked stock overdraft exceeding available quantity`);
+    // 26.10 Stock Physical Count Adjustment
+    const adjustRes = await apiRequest('/school/inventory/stock/adjustment', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            itemId: createdItem?.id,
+            countedQuantity: 58,
+            reason: 'Physical count found 2 damaged beakers discarded',
+            referenceNumber: 'AUDIT-Q3',
+        }),
+    });
+    const adjustData = adjustRes.data?.data;
+    record('INVENTORY_STOCK', 'Stock Audit Adjustment Reconciliation (POST /school/inventory/stock/adjustment)', adjustRes.status === 200 && adjustData?.item?.currentStock === 58, `Status ${adjustRes.status}: Reconciled stock balance to physical count (58 PCS)`);
+    // 26.11 Inter-Location Stock Transfer
+    const transferRes = await apiRequest('/school/inventory/stock/transfer', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            itemId: createdItem?.id,
+            sourceLocationId: createdLoc1?.id,
+            targetLocationId: createdLoc2?.id,
+            quantity: 10,
+            notes: 'Transfer 10 units to Central Storeroom B',
+        }),
+    });
+    const transferData = transferRes.data?.data;
+    record('INVENTORY_TRANSFER', 'Inter-Location Stock Transfer (POST /school/inventory/stock/transfer)', transferRes.status === 201 && transferData?.transfer?.transferNumber !== undefined, `Status ${transferRes.status}: Created transfer ${transferData?.transfer?.transferNumber} from ${createdLoc1?.name} to ${createdLoc2?.name}`);
+    // 26.12 Same-Location Transfer Rejection Guard
+    const sameLocTrfRes = await apiRequest('/school/inventory/stock/transfer', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            itemId: createdItem?.id,
+            sourceLocationId: createdLoc1?.id,
+            targetLocationId: createdLoc1?.id,
+            quantity: 5,
+        }),
+    });
+    record('INVENTORY_TRANSFER', 'Identical Source & Destination Rejection Guard', sameLocTrfRes.status === 400, `Status ${sameLocTrfRes.status}: Rejected transfer where source equals target location`);
+    // 26.13 Stock Movements Audit Log
+    const movementsRes = await apiRequest(`/school/inventory/stock/movements?itemId=${createdItem?.id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+    });
+    const movementsData = movementsRes.data?.data;
+    record('INVENTORY_MOVEMENTS', 'Stock Movements Audit Ledger Query (GET /school/inventory/stock/movements)', movementsRes.status === 200 && (movementsData?.movements?.length || 0) >= 4, `Status ${movementsRes.status}: Retrieved ${movementsData?.movements?.length} historical movements for item`);
+    // 26.14 Fixed Asset Registration & Book Valuation
+    const assetNumber = `AST-${Date.now().toString().slice(-5)}`;
+    const createAssetRes = await apiRequest('/school/inventory/assets', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            name: 'Sony 4K Smart Classroom Display Panel',
+            assetNumber,
+            serialNumber: `SN-SONY-${Date.now().toString().slice(-4)}`,
+            brand: 'Sony Bravia',
+            modelNumber: 'FWD-65BZ40H',
+            department: 'Smart Classrooms',
+            purchasePrice: 120000,
+            salvageValue: 12000,
+            usefulLifeMonths: 36,
+            depreciationMethod: 'STRAIGHT_LINE',
+            condition: 'NEW',
+            status: 'AVAILABLE',
+            locationId: createdLoc1?.id,
+            supplierId: createdSupp?.id,
+            notes: 'Interactive flat panel display for Class 10A',
+        }),
+    });
+    const createdAsset = createAssetRes.data?.data;
+    record('INVENTORY_ASSET', 'Fixed Asset Registration (POST /school/inventory/assets)', createAssetRes.status === 201 && Number(createdAsset?.currentBookValue) === 120000, `Status ${createAssetRes.status}: Registered asset '${createdAsset?.name}' (${createdAsset?.assetNumber}) with initial book value ₹${createdAsset?.currentBookValue}`);
+    // 26.15 Asset Details Query
+    const getAssetRes = await apiRequest(`/school/inventory/assets/${createdAsset?.id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+    });
+    record('INVENTORY_ASSET', 'Asset Details & Relations Dossier (GET /school/inventory/assets/:id)', getAssetRes.status === 200 && getAssetRes.data?.data?.location?.id === createdLoc1?.id, `Status ${getAssetRes.status}: Retrieved asset details with linked location and supplier`);
+    // 26.16 Asset Custody Assignment & Status Transition
+    const assignAssetRes = await apiRequest(`/school/inventory/assets/${createdAsset?.id}/assign`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            teacherId: createdTeacher?.id,
+            department: 'Mathematics & Science',
+            assignedCondition: 'GOOD',
+            assignmentRemarks: 'Assigned for academic year 2025-26',
+        }),
+    });
+    const assignData = assignAssetRes.data?.data;
+    record('INVENTORY_ASSIGNMENT', 'Asset Handover & Status Transition to ASSIGNED (POST /school/inventory/assets/:id/assign)', assignAssetRes.status === 201 && assignData?.asset?.status === 'ASSIGNED', `Status ${assignAssetRes.status}: Asset status transitioned to ${assignData?.asset?.status}`);
+    // 26.17 Double Assignment Prevention Guard
+    const doubleAssignRes = await apiRequest(`/school/inventory/assets/${createdAsset?.id}/assign`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            department: 'Attempted Double Assignment',
+        }),
+    });
+    record('INVENTORY_ASSIGNMENT', 'Prevent Double Assignment of In-Use Asset', doubleAssignRes.status === 400, `Status ${doubleAssignRes.status}: Blocked assigning already-assigned asset with 400 Bad Request`);
+    // 26.18 Asset Return & Status Transition back to AVAILABLE
+    const returnAssetRes = await apiRequest(`/school/inventory/assets/${createdAsset?.id}/return`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            returnCondition: 'GOOD',
+            returnRemarks: 'Returned at end of term; fully functional',
+        }),
+    });
+    const assetReturnData = returnAssetRes.data?.data;
+    record('INVENTORY_ASSIGNMENT', 'Asset Return & Status Transition to AVAILABLE (POST /school/inventory/assets/:id/return)', returnAssetRes.status === 200 && assetReturnData?.asset?.status === 'AVAILABLE', `Status ${returnAssetRes.status}: Asset returned and status transitioned back to ${assetReturnData?.asset?.status}`);
+    // 26.19 Asset Maintenance Ticket Creation & Status Transition
+    const createMntRes = await apiRequest('/school/inventory/maintenance/tickets', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            assetId: createdAsset?.id,
+            title: 'Display HDMI port loose contact',
+            issueDescription: 'HDMI 1 port intermittently losing video signal',
+            priority: 'HIGH',
+            estimatedCost: 2500,
+            supplierId: createdSupp?.id,
+        }),
+    });
+    const createdMnt = createMntRes.data?.data;
+    // Verify asset status transitioned to UNDER_MAINTENANCE
+    const assetPostMnt = await prisma_1.prisma.inventory_assets.findUnique({ where: { id: createdAsset?.id } });
+    record('INVENTORY_MAINTENANCE', 'Maintenance Ticket Logging & Asset Status Transition to UNDER_MAINTENANCE', createMntRes.status === 201 && assetPostMnt?.status === 'UNDER_MAINTENANCE', `Status ${createMntRes.status}: Ticket ${createdMnt?.ticketNumber} logged, asset status transitioned to ${assetPostMnt?.status}`);
+    // 26.20 Maintenance Log Entry & Status Update
+    const addLogRes = await apiRequest(`/school/inventory/maintenance/tickets/${createdMnt?.id}/logs`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            newStatus: 'IN_PROGRESS',
+            note: 'Technician dispatched from Precision Scientific; port connector re-soldered',
+            actionCost: 1500,
+        }),
+    });
+    record('INVENTORY_MAINTENANCE', 'Maintenance Service Log & Cost Increment (POST /school/inventory/maintenance/tickets/:id/logs)', addLogRes.status === 201, `Status ${addLogRes.status}: Service progress recorded with cost ₹1,500`);
+    // 26.21 Maintenance Resolution & Asset Release back to AVAILABLE
+    const resolveMntRes = await apiRequest(`/school/inventory/maintenance/tickets/${createdMnt?.id}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            status: 'RESOLVED',
+            actualCost: 1800,
+            workNotes: 'Repairs completed and tested; all inputs working',
+        }),
+    });
+    const assetPostResolve = await prisma_1.prisma.inventory_assets.findUnique({ where: { id: createdAsset?.id } });
+    record('INVENTORY_MAINTENANCE', 'Maintenance Ticket Resolution & Asset Release to AVAILABLE', resolveMntRes.status === 200 && assetPostResolve?.status === 'AVAILABLE', `Status ${resolveMntRes.status}: Ticket resolved; asset status returned to ${assetPostResolve?.status}`);
+    // 26.22 Straight-Line Depreciation Engine Execution
+    const depRunRes = await apiRequest('/school/inventory/depreciation/run', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            fiscalYear: '2025-2026',
+            periodStartDate: '2025-04-01',
+            periodEndDate: '2026-03-31',
+            assetIds: [createdAsset?.id],
+            remarks: 'FY 2025-26 Year-End Depreciation Run',
+        }),
+    });
+    const depRunData = depRunRes.data?.data;
+    const assetPostDep = await prisma_1.prisma.inventory_assets.findUnique({ where: { id: createdAsset?.id } });
+    // Annual SLM: (120,000 - 12,000) / 3 years = 36,000. New Book Value = 120,000 - 36,000 = 84,000.
+    const expectedBookValue = 84000;
+    record('INVENTORY_DEPRECIATION', 'Straight-Line Depreciation Engine (POST /school/inventory/depreciation/run)', depRunRes.status === 200 && Number(assetPostDep?.currentBookValue) === expectedBookValue, `Status ${depRunRes.status}: Depreciated by ₹36,000 (New Book Value: ₹${assetPostDep?.currentBookValue}, expected: ₹${expectedBookValue})`);
+    // 26.23 Salvage Value Floor Safeguard Invariant
+    // Execute 3 more depreciation runs to exhaust useful life; book value must NOT drop below salvageValue (12,000)
+    await apiRequest('/school/inventory/depreciation/run', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            fiscalYear: '2026-2027',
+            periodStartDate: '2026-04-01',
+            periodEndDate: '2027-03-31',
+            assetIds: [createdAsset?.id],
+        }),
+    });
+    await apiRequest('/school/inventory/depreciation/run', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            fiscalYear: '2027-2028',
+            periodStartDate: '2027-04-01',
+            periodEndDate: '2028-03-31',
+            assetIds: [createdAsset?.id],
+        }),
+    });
+    await apiRequest('/school/inventory/depreciation/run', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            fiscalYear: '2028-2029',
+            periodStartDate: '2028-04-01',
+            periodEndDate: '2029-03-31',
+            assetIds: [createdAsset?.id],
+        }),
+    });
+    const assetExhausted = await prisma_1.prisma.inventory_assets.findUnique({ where: { id: createdAsset?.id } });
+    record('INVENTORY_DEPRECIATION', 'Salvage Value Floor Invariant (Book value >= Salvage value)', Number(assetExhausted?.currentBookValue) === 12000, `Current book value ₹${assetExhausted?.currentBookValue} perfectly floored at salvage value ₹12,000`);
+    // 26.24 Purchase Order Creation & Calculation
+    const poNum = `PO-${Date.now().toString().slice(-5)}`;
+    const createPoRes = await apiRequest('/school/inventory/purchase-orders', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            supplierId: createdSupp?.id,
+            poNumber: poNum,
+            notes: 'Urgent restocking for midterm practical examinations',
+            items: [
+                {
+                    itemId: createdItem?.id,
+                    orderedQuantity: 100,
+                    unitPrice: 150,
+                    taxRate: 18,
+                },
+            ],
+        }),
+    });
+    const createdPo = createPoRes.data?.data;
+    // Subtotal = 100 * 150 = 15,000. Tax = 18% of 15,000 = 2,700. Total = 17,700.
+    record('INVENTORY_PURCHASE_ORDER', 'Purchase Order Creation with Tax Calculation (POST /school/inventory/purchase-orders)', createPoRes.status === 201 && Number(createdPo?.totalAmount) === 17700, `Status ${createPoRes.status}: PO ${createdPo?.poNumber} created. Subtotal: ₹${createdPo?.subtotal}, Total: ₹${createdPo?.totalAmount}`);
+    // 26.25 Purchase Order Receiving & Automated Stock Increment
+    const poItemId = createdPo?.items?.[0]?.id;
+    const stockPreReceive = (await prisma_1.prisma.inventory_items.findUnique({ where: { id: createdItem?.id } }))?.currentStock || 0;
+    const receivePoRes = await apiRequest(`/school/inventory/purchase-orders/${createdPo?.id}/receive`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+        body: JSON.stringify({
+            items: [
+                {
+                    poItemId,
+                    receivedQuantity: 100,
+                    targetLocationId: createdLoc1?.id,
+                },
+            ],
+            notes: 'Vendor delivery accepted by store in-charge',
+        }),
+    });
+    const receiveData = receivePoRes.data?.data;
+    const stockPostReceive = (await prisma_1.prisma.inventory_items.findUnique({ where: { id: createdItem?.id } }))?.currentStock || 0;
+    record('INVENTORY_PURCHASE_ORDER', 'Goods Receiving against PO & Automated Stock Inward Increment', receivePoRes.status === 200 && receiveData?.status === 'RECEIVED' && stockPostReceive === stockPreReceive + 100, `Status ${receivePoRes.status}: PO status updated to ${receiveData?.status}, stock increased from ${stockPreReceive} to ${stockPostReceive} (+100)`);
+    // 26.26 Multi-Tenant IDOR Security Isolation Guard
+    const idorInvItemRes = await apiRequest(`/school/inventory/items/${createdItem?.id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${oakridgeAdminToken}` },
+    });
+    const idorAssetRes = await apiRequest(`/school/inventory/assets/${createdAsset?.id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${oakridgeAdminToken}` },
+    });
+    const idorPoRes = await apiRequest(`/school/inventory/purchase-orders/${createdPo?.id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${oakridgeAdminToken}` },
+    });
+    record('INVENTORY_SECURITY', 'Multi-Tenant IDOR Isolation Guard (Cross-Tenant Access Rejection)', idorInvItemRes.status === 404 && idorAssetRes.status === 404 && idorPoRes.status === 404, `Item status: ${idorInvItemRes.status}, Asset status: ${idorAssetRes.status}, PO status: ${idorPoRes.status} (All returned 404 Not Found)`);
+    // 26.27 Streaming CSV Exports
+    const csvItemsRes = await apiRequest('/school/inventory/export/items', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+    });
+    const csvAssetsRes = await apiRequest('/school/inventory/export/assets', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${springfieldAdminToken}` },
+    });
+    const isItemsCsv = (csvItemsRes.headers.get('content-type') || '').includes('text/csv');
+    const isAssetsCsv = (csvAssetsRes.headers.get('content-type') || '').includes('text/csv');
+    record('INVENTORY_REPORTS', 'Streaming CSV Exports Validation (Items & Assets Register)', csvItemsRes.status === 200 && csvAssetsRes.status === 200 && isItemsCsv && isAssetsCsv, `Items CSV status ${csvItemsRes.status} (${csvItemsRes.headers.get('content-type')}), Assets CSV status ${csvAssetsRes.status}`);
+    // Cleanup Section 26 Artifacts
+    try {
+        if (createdPo) {
+            await prisma_1.prisma.inventory_purchase_order_items.deleteMany({ where: { purchaseOrderId: createdPo.id } });
+            await prisma_1.prisma.inventory_purchase_orders.delete({ where: { id: createdPo.id } });
+        }
+        if (createdMnt) {
+            await prisma_1.prisma.inventory_maintenance_logs.deleteMany({ where: { ticketId: createdMnt.id } });
+            await prisma_1.prisma.inventory_maintenance_tickets.delete({ where: { id: createdMnt.id } });
+        }
+        if (createdAsset) {
+            await prisma_1.prisma.inventory_depreciations.deleteMany({ where: { assetId: createdAsset.id } });
+            await prisma_1.prisma.inventory_asset_assignments.deleteMany({ where: { assetId: createdAsset.id } });
+            await prisma_1.prisma.inventory_assets.delete({ where: { id: createdAsset.id } });
+        }
+        if (createdItem) {
+            await prisma_1.prisma.inventory_stock_transfers.deleteMany({ where: { itemId: createdItem.id } });
+            await prisma_1.prisma.inventory_stock_movements.deleteMany({ where: { itemId: createdItem.id } });
+            await prisma_1.prisma.inventory_items.delete({ where: { id: createdItem.id } });
+        }
+        if (createdSupp) {
+            await prisma_1.prisma.inventory_suppliers.delete({ where: { id: createdSupp.id } });
+        }
+        if (createdLoc2) {
+            await prisma_1.prisma.inventory_locations.delete({ where: { id: createdLoc2.id } });
+        }
+        if (createdLoc1) {
+            await prisma_1.prisma.inventory_locations.delete({ where: { id: createdLoc1.id } });
+        }
+        if (createdInvCat) {
+            await prisma_1.prisma.inventory_categories.delete({ where: { id: createdInvCat.id } });
+        }
+    }
+    catch { }
     // ==========================================
     // 23. CLEANUP TEST ARTIFACTS
     // ==========================================

@@ -9,7 +9,11 @@
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "test:portal": "tsx src/portal-tests.ts",
+    "test:notification": "tsx src/notification-tests.ts",
+    "test:payroll": "tsx src/payroll-hr-tests.ts",
+    "test": "tsx src/payroll-hr-tests.ts"
   },
   "keywords": [],
   "author": "",

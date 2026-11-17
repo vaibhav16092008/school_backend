@@ -12,6 +12,9 @@ const fee_controller_1 = require("../controllers/fee.controller");
 const examination_controller_1 = require("../controllers/examination.controller");
 const timetable_controller_1 = require("../controllers/timetable.controller");
 const homework_controller_1 = require("../controllers/homework.controller");
+const transport_controller_1 = require("../controllers/transport.controller");
+const library_controller_1 = require("../controllers/library.controller");
+const inventory_controller_1 = require("../controllers/inventory.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const role_middleware_1 = require("../middleware/role.middleware");
 const tenant_middleware_1 = require("../middleware/tenant.middleware");
@@ -25,6 +28,9 @@ const fee_validator_1 = require("../validators/fee.validator");
 const examination_validator_1 = require("../validators/examination.validator");
 const timetable_validator_1 = require("../validators/timetable.validator");
 const homework_validator_1 = require("../validators/homework.validator");
+const transport_validator_1 = require("../validators/transport.validator");
+const library_validator_1 = require("../validators/library.validator");
+const inventory_validator_1 = require("../validators/inventory.validator");
 const router = (0, express_1.Router)();
 // Protect all school routes: Must be authenticated, must be SCHOOL_ADMIN or SUPER_ADMIN, and must pass tenant isolation
 router.use(auth_middleware_1.authenticateJwt, (0, role_middleware_1.requireRole)(prisma_1.Role.SCHOOL_ADMIN, prisma_1.Role.SUPER_ADMIN), tenant_middleware_1.requireTenant);
@@ -134,4 +140,157 @@ router.get('/homework/:id', homework_controller_1.getHomeworkById);
 router.post('/homework/:id/submit', (0, validate_middleware_1.validateRequest)({ body: homework_validator_1.submitHomeworkSchema }), homework_controller_1.submitHomework);
 router.post('/homework/submissions/:submissionId/evaluate', (0, validate_middleware_1.validateRequest)({ body: homework_validator_1.evaluateHomeworkSchema }), homework_controller_1.evaluateHomework);
 router.delete('/homework/:id', homework_controller_1.deleteHomework);
+// ==================== TRANSPORT MANAGEMENT (PHASE 5.1) ====================
+// Dashboard
+router.get('/transport/dashboard', transport_controller_1.getTransportDashboard);
+// Vehicles
+router.get('/transport/vehicles', transport_controller_1.getVehicles);
+router.post('/transport/vehicles', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.createVehicleSchema }), transport_controller_1.createVehicle);
+router.get('/transport/vehicles/:id', transport_controller_1.getVehicleById);
+router.patch('/transport/vehicles/:id', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.updateVehicleSchema }), transport_controller_1.updateVehicle);
+router.delete('/transport/vehicles/:id', transport_controller_1.deleteVehicle);
+// Routes
+router.get('/transport/routes', transport_controller_1.getRoutes);
+router.post('/transport/routes', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.createRouteSchema }), transport_controller_1.createRoute);
+router.get('/transport/routes/:id', transport_controller_1.getRouteById);
+router.patch('/transport/routes/:id', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.updateRouteSchema }), transport_controller_1.updateRoute);
+router.delete('/transport/routes/:id', transport_controller_1.deleteRoute);
+// Route Stops
+router.post('/transport/stops', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.createStopSchema }), transport_controller_1.createStop);
+router.patch('/transport/stops/:id', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.updateStopSchema }), transport_controller_1.updateStop);
+router.delete('/transport/stops/:id', transport_controller_1.deleteStop);
+router.post('/transport/stops/reorder', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.reorderStopsSchema }), transport_controller_1.reorderStops);
+// Drivers
+router.get('/transport/drivers', transport_controller_1.getDrivers);
+router.post('/transport/drivers', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.createDriverSchema }), transport_controller_1.createDriver);
+router.get('/transport/drivers/:id', transport_controller_1.getDriverById);
+router.patch('/transport/drivers/:id', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.updateDriverSchema }), transport_controller_1.updateDriver);
+router.delete('/transport/drivers/:id', transport_controller_1.deleteDriver);
+// Vehicle & Route Assignments
+router.get('/transport/assignments', transport_controller_1.getAssignments);
+router.post('/transport/assignments', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.createAssignmentSchema }), transport_controller_1.createAssignment);
+router.patch('/transport/assignments/:id', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.updateAssignmentSchema }), transport_controller_1.updateAssignment);
+router.delete('/transport/assignments/:id', transport_controller_1.deleteAssignment);
+// Student Transport Allocations
+router.get('/transport/student-allocations', transport_controller_1.getStudentAllocations);
+router.post('/transport/student-allocations', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.createStudentAllocationSchema }), transport_controller_1.createStudentAllocation);
+router.patch('/transport/student-allocations/:id', (0, validate_middleware_1.validateRequest)({ body: transport_validator_1.updateStudentAllocationSchema }), transport_controller_1.updateStudentAllocation);
+router.delete('/transport/student-allocations/:id', transport_controller_1.deleteStudentAllocation);
+// Reports & CSV Export
+router.get('/transport/reports', transport_controller_1.getTransportReports);
+// ==================== LIBRARY MANAGEMENT (PHASE 5.2) ====================
+// Dashboard & Settings
+router.get('/library/dashboard', library_controller_1.getLibraryDashboard);
+router.get('/library/settings', library_controller_1.getLibrarySettings);
+router.patch('/library/settings', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.updateLibrarySettingsSchema }), library_controller_1.updateLibrarySettings);
+// Categories
+router.get('/library/categories', library_controller_1.getCategories);
+router.post('/library/categories', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.createCategorySchema }), library_controller_1.createCategory);
+router.patch('/library/categories/:id', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.updateCategorySchema }), library_controller_1.updateCategory);
+router.delete('/library/categories/:id', library_controller_1.deleteCategory);
+// Authors
+router.get('/library/authors', library_controller_1.getAuthors);
+router.post('/library/authors', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.createAuthorSchema }), library_controller_1.createAuthor);
+router.patch('/library/authors/:id', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.updateAuthorSchema }), library_controller_1.updateAuthor);
+router.delete('/library/authors/:id', library_controller_1.deleteAuthor);
+// Publishers
+router.get('/library/publishers', library_controller_1.getPublishers);
+router.post('/library/publishers', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.createPublisherSchema }), library_controller_1.createPublisher);
+router.patch('/library/publishers/:id', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.updatePublisherSchema }), library_controller_1.updatePublisher);
+router.delete('/library/publishers/:id', library_controller_1.deletePublisher);
+// Book Catalogue
+router.get('/library/books', library_controller_1.getBooks);
+router.post('/library/books', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.createBookSchema }), library_controller_1.createBook);
+router.get('/library/books/:id', library_controller_1.getBookById);
+router.patch('/library/books/:id', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.updateBookSchema }), library_controller_1.updateBook);
+router.delete('/library/books/:id', library_controller_1.deleteBook);
+// Physical Book Copies
+router.get('/library/copies', library_controller_1.getCopies);
+router.post('/library/copies', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.createCopySchema }), library_controller_1.createCopy);
+router.patch('/library/copies/:id', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.updateCopySchema }), library_controller_1.updateCopy);
+router.delete('/library/copies/:id', library_controller_1.deleteCopy);
+// Members
+router.get('/library/members', library_controller_1.getMembers);
+router.post('/library/members', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.createMemberSchema }), library_controller_1.createMember);
+router.get('/library/members/:id', library_controller_1.getMemberById);
+router.patch('/library/members/:id', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.updateMemberSchema }), library_controller_1.updateMember);
+router.delete('/library/members/:id', library_controller_1.deleteMember);
+// Book Issues & Returns
+router.get('/library/issues', library_controller_1.getIssues);
+router.post('/library/issues', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.issueBookSchema }), library_controller_1.issueBook);
+router.post('/library/issues/:id/return', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.returnBookSchema }), library_controller_1.returnBook);
+router.get('/library/overdue', library_controller_1.getOverdueBooks);
+// Fines
+router.get('/library/fines', library_controller_1.getFines);
+router.post('/library/fines/:id/adjust', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.fineAdjustmentSchema }), library_controller_1.recordFineAdjustment);
+router.post('/library/fines/:id/adjustment', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.fineAdjustmentSchema }), library_controller_1.recordFineAdjustment);
+// Reservations
+router.get('/library/reservations', library_controller_1.getReservations);
+router.post('/library/reservations', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.createReservationSchema }), library_controller_1.createReservation);
+router.post('/library/reservations/:id/allocate', (0, validate_middleware_1.validateRequest)({ body: library_validator_1.allocateReservationSchema }), library_controller_1.allocateReservation);
+router.delete('/library/reservations/:id', library_controller_1.cancelReservation);
+// Reports
+router.get('/library/reports', library_controller_1.getLibraryReports);
+// ==================== INVENTORY & ASSET MANAGEMENT (PHASE 5.3) ====================
+// Dashboard & KPIs
+router.get('/inventory/dashboard', inventory_controller_1.getInventoryDashboard);
+// Categories
+router.get('/inventory/categories', inventory_controller_1.listCategories);
+router.post('/inventory/categories', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.createCategorySchema }), inventory_controller_1.createCategory);
+router.get('/inventory/categories/:id', inventory_controller_1.getCategoryById);
+router.put('/inventory/categories/:id', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.updateCategorySchema }), inventory_controller_1.updateCategory);
+router.delete('/inventory/categories/:id', inventory_controller_1.deleteCategory);
+// Locations
+router.get('/inventory/locations', inventory_controller_1.listLocations);
+router.post('/inventory/locations', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.createLocationSchema }), inventory_controller_1.createLocation);
+router.put('/inventory/locations/:id', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.updateLocationSchema }), inventory_controller_1.updateLocation);
+router.delete('/inventory/locations/:id', inventory_controller_1.deleteLocation);
+// Suppliers
+router.get('/inventory/suppliers', inventory_controller_1.listSuppliers);
+router.post('/inventory/suppliers', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.createSupplierSchema }), inventory_controller_1.createSupplier);
+router.put('/inventory/suppliers/:id', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.updateSupplierSchema }), inventory_controller_1.updateSupplier);
+router.delete('/inventory/suppliers/:id', inventory_controller_1.deleteSupplier);
+// Item Catalogue
+router.get('/inventory/items', inventory_controller_1.listItems);
+router.post('/inventory/items', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.createItemSchema }), inventory_controller_1.createItem);
+router.get('/inventory/items/:id', inventory_controller_1.getItemById);
+router.put('/inventory/items/:id', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.updateItemSchema }), inventory_controller_1.updateItem);
+router.delete('/inventory/items/:id', inventory_controller_1.deleteItem);
+// Stock Movements
+router.post('/inventory/stock/inward', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.stockInwardSchema }), inventory_controller_1.recordStockInward);
+router.post('/inventory/stock/outward', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.stockOutwardSchema }), inventory_controller_1.recordStockOutward);
+router.post('/inventory/stock/adjustment', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.stockAdjustmentSchema }), inventory_controller_1.recordStockAdjustment);
+router.post('/inventory/stock/transfer', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.stockTransferSchema }), inventory_controller_1.recordStockTransfer);
+router.get('/inventory/stock/movements', inventory_controller_1.listStockMovements);
+// Asset Register
+router.get('/inventory/assets', inventory_controller_1.listAssets);
+router.post('/inventory/assets', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.createAssetSchema }), inventory_controller_1.createAsset);
+router.get('/inventory/assets/:id', inventory_controller_1.getAssetById);
+router.put('/inventory/assets/:id', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.updateAssetSchema }), inventory_controller_1.updateAsset);
+router.delete('/inventory/assets/:id', inventory_controller_1.deleteAsset);
+// Asset Assignment & Return
+router.post('/inventory/assets/:id/assign', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.assignAssetSchema }), inventory_controller_1.assignAsset);
+router.post('/inventory/assets/:id/return', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.returnAssetSchema }), inventory_controller_1.returnAsset);
+router.get('/inventory/assignments', inventory_controller_1.listAssetAssignments);
+// Asset Maintenance
+router.get('/inventory/maintenance/tickets', inventory_controller_1.listMaintenanceTickets);
+router.post('/inventory/maintenance/tickets', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.createMaintenanceTicketSchema }), inventory_controller_1.createMaintenanceTicket);
+router.get('/inventory/maintenance/tickets/:id', inventory_controller_1.getMaintenanceTicketById);
+router.put('/inventory/maintenance/tickets/:id', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.updateMaintenanceTicketSchema }), inventory_controller_1.updateMaintenanceTicket);
+router.post('/inventory/maintenance/tickets/:id/logs', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.addMaintenanceLogSchema }), inventory_controller_1.addMaintenanceLog);
+// Depreciation Engine
+router.post('/inventory/depreciation/run', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.runDepreciationSchema }), inventory_controller_1.runDepreciation);
+router.get('/inventory/depreciation/history', inventory_controller_1.listDepreciationHistory);
+// Purchase Orders & Receiving
+router.get('/inventory/purchase-orders', inventory_controller_1.listPurchaseOrders);
+router.post('/inventory/purchase-orders', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.createPurchaseOrderSchema }), inventory_controller_1.createPurchaseOrder);
+router.get('/inventory/purchase-orders/:id', inventory_controller_1.getPurchaseOrderById);
+router.put('/inventory/purchase-orders/:id/status', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.updatePurchaseOrderStatusSchema }), inventory_controller_1.updatePurchaseOrderStatus);
+router.post('/inventory/purchase-orders/:id/receive', (0, validate_middleware_1.validateRequest)({ body: inventory_validator_1.receivePurchaseOrderItemsSchema }), inventory_controller_1.receivePurchaseOrderItems);
+// Streaming CSV Exports
+router.get('/inventory/export/items', inventory_controller_1.exportItemsCsv);
+router.get('/inventory/export/stock-movements', inventory_controller_1.exportStockMovementsCsv);
+router.get('/inventory/export/assets', inventory_controller_1.exportAssetsCsv);
+router.get('/inventory/export/depreciation', inventory_controller_1.exportDepreciationCsv);
+router.get('/inventory/export/maintenance', inventory_controller_1.exportMaintenanceCsv);
 exports.default = router;
