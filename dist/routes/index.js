@@ -14,6 +14,7 @@ const notification_user_routes_1 = __importDefault(require("./notification-user.
 const notification_admin_routes_1 = __importDefault(require("./notification-admin.routes"));
 const payroll_hr_routes_1 = require("./payroll-hr.routes");
 const portal_admin_routes_1 = require("./portal-admin.routes");
+const saas_billing_routes_1 = require("./saas-billing.routes");
 const router = (0, express_1.Router)();
 // 1. Authentication
 router.use('/auth', auth_routes_1.default);
@@ -43,4 +44,9 @@ router.use('/student', student_portal_routes_1.default);
 // Also mirror under /school/parent and /school/student for versatile API access
 router.use('/school/parent', parent_portal_routes_1.default);
 router.use('/school/student', student_portal_routes_1.default);
+// 7. Phase 9: SaaS Subscription, Billing, Payments & Webhooks
+router.use('/super-admin/saas', saas_billing_routes_1.superAdminBillingRouter);
+router.use('/superadmin/saas', saas_billing_routes_1.superAdminBillingRouter);
+router.use('/school/subscription', saas_billing_routes_1.schoolAdminBillingRouter);
+router.use('/webhooks/billing', saas_billing_routes_1.billingWebhookRouter);
 exports.default = router;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ErpNotificationTriggers = void 0;
+exports.triggerSaaSPaymentFailed = exports.triggerSaaSPaymentSuccess = exports.triggerSaaSInvoiceGenerated = exports.triggerSaaSSubscriptionActivated = exports.triggerSaaSTrialStarted = exports.ErpNotificationTriggers = void 0;
 const prisma_1 = require("../lib/prisma");
 const notification_service_1 = require("./notification.service");
 /**
@@ -571,5 +571,166 @@ class ErpNotificationTriggers {
             return null;
         }
     }
+    /**
+     * 21. SaaS Trial Started
+     */
+    static async triggerSaaSTrialStarted(details) {
+        try {
+            const adminUsers = await prisma_1.prisma.users.findMany({
+                where: { schoolId: details.schoolId, role: prisma_1.Role.SCHOOL_ADMIN },
+                select: { id: true },
+            });
+            const userIds = adminUsers.map((u) => u.id);
+            if (userIds.length === 0)
+                return null;
+            return await notification_service_1.notificationService.dispatchNotification({
+                schoolId: details.schoolId,
+                eventType: prisma_1.NotificationEventType.SAAS_TRIAL_STARTED,
+                title: `Welcome to ERP! ${details.planName} Trial Started`,
+                content: `Your ${details.daysRemaining}-day free trial for ${details.planName} plan is now active. Enjoy full platform access.`,
+                userIds,
+                channels: [prisma_1.NotificationChannel.IN_APP, prisma_1.NotificationChannel.EMAIL],
+                priority: prisma_1.NotificationPriority.NORMAL,
+                variables: {
+                    planName: details.planName,
+                    daysRemaining: String(details.daysRemaining),
+                },
+            });
+        }
+        catch (error) {
+            console.error('[NotificationTrigger] SaaS trial started notification failed:', error);
+            return null;
+        }
+    }
+    /**
+     * 22. SaaS Subscription Activated
+     */
+    static async triggerSaaSSubscriptionActivated(details) {
+        try {
+            const adminUsers = await prisma_1.prisma.users.findMany({
+                where: { schoolId: details.schoolId, role: prisma_1.Role.SCHOOL_ADMIN },
+                select: { id: true },
+            });
+            const userIds = adminUsers.map((u) => u.id);
+            if (userIds.length === 0)
+                return null;
+            return await notification_service_1.notificationService.dispatchNotification({
+                schoolId: details.schoolId,
+                eventType: prisma_1.NotificationEventType.SAAS_SUBSCRIPTION_ACTIVATED,
+                title: `Subscription Activated: ${details.planName}`,
+                content: `Your school's subscription to the ${details.planName} plan has been successfully activated.`,
+                userIds,
+                channels: [prisma_1.NotificationChannel.IN_APP, prisma_1.NotificationChannel.EMAIL],
+                priority: prisma_1.NotificationPriority.HIGH,
+                variables: {
+                    planName: details.planName,
+                },
+            });
+        }
+        catch (error) {
+            console.error('[NotificationTrigger] SaaS subscription activated notification failed:', error);
+            return null;
+        }
+    }
+    /**
+     * 23. SaaS Invoice Generated
+     */
+    static async triggerSaaSInvoiceGenerated(details) {
+        try {
+            const adminUsers = await prisma_1.prisma.users.findMany({
+                where: { schoolId: details.schoolId, role: prisma_1.Role.SCHOOL_ADMIN },
+                select: { id: true },
+            });
+            const userIds = adminUsers.map((u) => u.id);
+            if (userIds.length === 0)
+                return null;
+            return await notification_service_1.notificationService.dispatchNotification({
+                schoolId: details.schoolId,
+                eventType: prisma_1.NotificationEventType.SAAS_INVOICE_GENERATED,
+                title: `New SaaS Billing Invoice: ${details.invoiceNumber}`,
+                content: `Invoice ${details.invoiceNumber} for ${details.currency} ${details.totalAmount.toFixed(2)} has been generated. Due date: ${new Date(details.dueDate).toLocaleDateString()}.`,
+                userIds,
+                channels: [prisma_1.NotificationChannel.IN_APP, prisma_1.NotificationChannel.EMAIL],
+                priority: prisma_1.NotificationPriority.NORMAL,
+                variables: {
+                    invoiceNumber: details.invoiceNumber,
+                    amount: `${details.currency} ${details.totalAmount.toFixed(2)}`,
+                    dueDate: new Date(details.dueDate).toLocaleDateString(),
+                },
+            });
+        }
+        catch (error) {
+            console.error('[NotificationTrigger] SaaS invoice generated notification failed:', error);
+            return null;
+        }
+    }
+    /**
+     * 24. SaaS Payment Success
+     */
+    static async triggerSaaSPaymentSuccess(details) {
+        try {
+            const adminUsers = await prisma_1.prisma.users.findMany({
+                where: { schoolId: details.schoolId, role: prisma_1.Role.SCHOOL_ADMIN },
+                select: { id: true },
+            });
+            const userIds = adminUsers.map((u) => u.id);
+            if (userIds.length === 0)
+                return null;
+            return await notification_service_1.notificationService.dispatchNotification({
+                schoolId: details.schoolId,
+                eventType: prisma_1.NotificationEventType.SAAS_PAYMENT_SUCCESS,
+                title: `Payment Successful: ${details.invoiceNumber}`,
+                content: `Payment of ${details.currency} ${details.amount.toFixed(2)} for ${details.invoiceNumber} was successfully received. Thank you!`,
+                userIds,
+                channels: [prisma_1.NotificationChannel.IN_APP, prisma_1.NotificationChannel.EMAIL],
+                priority: prisma_1.NotificationPriority.HIGH,
+                variables: {
+                    invoiceNumber: details.invoiceNumber,
+                    amount: `${details.currency} ${details.amount.toFixed(2)}`,
+                },
+            });
+        }
+        catch (error) {
+            console.error('[NotificationTrigger] SaaS payment success notification failed:', error);
+            return null;
+        }
+    }
+    /**
+     * 25. SaaS Payment Failed
+     */
+    static async triggerSaaSPaymentFailed(details) {
+        try {
+            const adminUsers = await prisma_1.prisma.users.findMany({
+                where: { schoolId: details.schoolId, role: prisma_1.Role.SCHOOL_ADMIN },
+                select: { id: true },
+            });
+            const userIds = adminUsers.map((u) => u.id);
+            if (userIds.length === 0)
+                return null;
+            return await notification_service_1.notificationService.dispatchNotification({
+                schoolId: details.schoolId,
+                eventType: prisma_1.NotificationEventType.SAAS_PAYMENT_FAILED,
+                title: `Billing Payment Failed: ${details.invoiceNumber}`,
+                content: `The renewal payment of ${details.currency} ${details.amount.toFixed(2)} for ${details.invoiceNumber} could not be processed. Reason: ${details.reason}`,
+                userIds,
+                channels: [prisma_1.NotificationChannel.IN_APP, prisma_1.NotificationChannel.EMAIL],
+                priority: prisma_1.NotificationPriority.HIGH,
+                variables: {
+                    invoiceNumber: details.invoiceNumber,
+                    reason: details.reason,
+                },
+            });
+        }
+        catch (error) {
+            console.error('[NotificationTrigger] SaaS payment failed notification failed:', error);
+            return null;
+        }
+    }
 }
 exports.ErpNotificationTriggers = ErpNotificationTriggers;
+// Standalone exports for convenience
+exports.triggerSaaSTrialStarted = ErpNotificationTriggers.triggerSaaSTrialStarted;
+exports.triggerSaaSSubscriptionActivated = ErpNotificationTriggers.triggerSaaSSubscriptionActivated;
+exports.triggerSaaSInvoiceGenerated = ErpNotificationTriggers.triggerSaaSInvoiceGenerated;
+exports.triggerSaaSPaymentSuccess = ErpNotificationTriggers.triggerSaaSPaymentSuccess;
+exports.triggerSaaSPaymentFailed = ErpNotificationTriggers.triggerSaaSPaymentFailed;

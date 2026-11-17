@@ -10,7 +10,7 @@
 */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CalculationType = exports.ComponentType = exports.LeaveStatus = exports.EmploymentStatus = exports.EmploymentType = exports.DeliveryStatus = exports.NotificationPriority = exports.NotificationChannel = exports.NotificationEventType = exports.TargetAudience = exports.AnnouncementCategory = exports.InvitationStatus = exports.TransferStatus = exports.PurchaseOrderStatus = exports.MaintenanceStatus = exports.MaintenancePriority = exports.DepreciationMethod = exports.AssetStatus = exports.AssetCondition = exports.StockMovementType = exports.InventoryItemType = exports.LibraryReservationStatus = exports.LibraryFineStatus = exports.LibraryFineType = exports.BookIssueStatus = exports.LibraryMemberStatus = exports.LibraryMemberType = exports.BookCopyStatus = exports.BookCondition = exports.AllocationStatus = exports.AssignmentStatus = exports.DriverStatus = exports.RouteStatus = exports.VehicleStatus = exports.VehicleType = exports.HomeworkStatus = exports.DayOfWeek = exports.ExamResultStatus = exports.ExamStatus = exports.ExamType = exports.PaymentType = exports.PaymentMethod = exports.InvoiceStatus = exports.FeeFrequency = exports.AttendanceStatus = exports.EnrollmentStatus = exports.UserStatus = exports.SchoolStatus = exports.Role = exports.Gender = void 0;
-exports.ExpenseStatus = exports.PayrollStatus = exports.PayrollPeriodStatus = void 0;
+exports.PaymentGatewayProvider = exports.TrialStatus = exports.DiscountType = exports.BillingPaymentStatus = exports.BillingInvoiceStatus = exports.PlanStatus = exports.BillingCycle = exports.SubscriptionStatus = exports.ExpenseStatus = exports.PayrollStatus = exports.PayrollPeriodStatus = void 0;
 exports.Gender = {
     MALE: 'MALE',
     FEMALE: 'FEMALE',
@@ -287,7 +287,16 @@ exports.NotificationEventType = {
     PAYSLIP_PUBLISHED: 'PAYSLIP_PUBLISHED',
     PAYROLL_PAID: 'PAYROLL_PAID',
     EXPENSE_SUBMITTED: 'EXPENSE_SUBMITTED',
-    EXPENSE_STATUS_UPDATED: 'EXPENSE_STATUS_UPDATED'
+    EXPENSE_STATUS_UPDATED: 'EXPENSE_STATUS_UPDATED',
+    SAAS_TRIAL_STARTED: 'SAAS_TRIAL_STARTED',
+    SAAS_TRIAL_EXPIRING_SOON: 'SAAS_TRIAL_EXPIRING_SOON',
+    SAAS_TRIAL_EXPIRED: 'SAAS_TRIAL_EXPIRED',
+    SAAS_SUBSCRIPTION_ACTIVATED: 'SAAS_SUBSCRIPTION_ACTIVATED',
+    SAAS_SUBSCRIPTION_UPGRADED: 'SAAS_SUBSCRIPTION_UPGRADED',
+    SAAS_SUBSCRIPTION_SUSPENDED: 'SAAS_SUBSCRIPTION_SUSPENDED',
+    SAAS_INVOICE_GENERATED: 'SAAS_INVOICE_GENERATED',
+    SAAS_PAYMENT_SUCCESS: 'SAAS_PAYMENT_SUCCESS',
+    SAAS_PAYMENT_FAILED: 'SAAS_PAYMENT_FAILED'
 };
 exports.NotificationChannel = {
     IN_APP: 'IN_APP',
@@ -356,4 +365,55 @@ exports.ExpenseStatus = {
     REJECTED: 'REJECTED',
     PAID: 'PAID',
     CANCELLED: 'CANCELLED'
+};
+exports.SubscriptionStatus = {
+    TRIALING: 'TRIALING',
+    ACTIVE: 'ACTIVE',
+    PAST_DUE: 'PAST_DUE',
+    GRACE_PERIOD: 'GRACE_PERIOD',
+    SUSPENDED: 'SUSPENDED',
+    CANCELLED: 'CANCELLED',
+    EXPIRED: 'EXPIRED'
+};
+exports.BillingCycle = {
+    MONTHLY: 'MONTHLY',
+    QUARTERLY: 'QUARTERLY',
+    SEMI_ANNUAL: 'SEMI_ANNUAL',
+    ANNUAL: 'ANNUAL'
+};
+exports.PlanStatus = {
+    ACTIVE: 'ACTIVE',
+    INACTIVE: 'INACTIVE',
+    ARCHIVED: 'ARCHIVED'
+};
+exports.BillingInvoiceStatus = {
+    DRAFT: 'DRAFT',
+    ISSUED: 'ISSUED',
+    PARTIALLY_PAID: 'PARTIALLY_PAID',
+    PAID: 'PAID',
+    OVERDUE: 'OVERDUE',
+    VOID: 'VOID',
+    REFUNDED: 'REFUNDED'
+};
+exports.BillingPaymentStatus = {
+    PENDING: 'PENDING',
+    SUCCESS: 'SUCCESS',
+    FAILED: 'FAILED',
+    REFUNDED: 'REFUNDED'
+};
+exports.DiscountType = {
+    FIXED: 'FIXED',
+    PERCENTAGE: 'PERCENTAGE'
+};
+exports.TrialStatus = {
+    NOT_STARTED: 'NOT_STARTED',
+    ACTIVE: 'ACTIVE',
+    EXPIRED: 'EXPIRED',
+    CONVERTED: 'CONVERTED',
+    CANCELLED: 'CANCELLED'
+};
+exports.PaymentGatewayProvider = {
+    MOCK: 'MOCK',
+    RAZORPAY: 'RAZORPAY',
+    STRIPE: 'STRIPE'
 };

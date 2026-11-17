@@ -20,6 +20,11 @@ import {
   portalUsersRouter,
   announcementsRouter,
 } from './portal-admin.routes';
+import {
+  superAdminBillingRouter,
+  schoolAdminBillingRouter,
+  billingWebhookRouter,
+} from './saas-billing.routes';
 
 const router = Router();
 
@@ -57,5 +62,11 @@ router.use('/student', studentPortalRoutes);
 // Also mirror under /school/parent and /school/student for versatile API access
 router.use('/school/parent', parentPortalRoutes);
 router.use('/school/student', studentPortalRoutes);
+
+// 7. Phase 9: SaaS Subscription, Billing, Payments & Webhooks
+router.use('/super-admin/saas', superAdminBillingRouter);
+router.use('/superadmin/saas', superAdminBillingRouter);
+router.use('/school/subscription', schoolAdminBillingRouter);
+router.use('/webhooks/billing', billingWebhookRouter);
 
 export default router;

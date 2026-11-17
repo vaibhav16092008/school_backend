@@ -13,7 +13,8 @@
     "test:portal": "tsx src/portal-tests.ts",
     "test:notification": "tsx src/notification-tests.ts",
     "test:payroll": "tsx src/payroll-hr-tests.ts",
-    "test": "tsx src/payroll-hr-tests.ts"
+    "test:saas": "tsx src/saas-billing-tests.ts",
+    "test": "tsx src/saas-billing-tests.ts"
   },
   "keywords": [],
   "author": "",

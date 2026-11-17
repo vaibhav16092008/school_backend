@@ -35,3 +35,17 @@ export function sendError(
   });
 }
 
+export const ApiResponse = {
+  success: <T = any>(message: string = 'Success', data?: T, meta?: any) => ({
+    success: true,
+    message,
+    data,
+    meta,
+  }),
+  error: (message: string = 'An error occurred', details?: any) => ({
+    success: false,
+    message,
+    error: details,
+  }),
+};
+

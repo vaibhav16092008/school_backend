@@ -222,6 +222,46 @@ exports.SYSTEM_DEFAULT_TEMPLATES = [
         body: '{{content}}\n\nRegards,\n{{schoolName}}',
         variables: ['title', 'content', 'schoolName'],
     },
+    {
+        eventType: prisma_1.NotificationEventType.SAAS_TRIAL_STARTED,
+        channel: prisma_1.NotificationChannel.IN_APP,
+        name: 'SaaS Trial Started (In-App)',
+        subject: 'Welcome to ERP! {{planName}} Trial Started',
+        body: 'Your {{daysRemaining}}-day trial of {{planName}} is active.',
+        variables: ['planName', 'daysRemaining'],
+    },
+    {
+        eventType: prisma_1.NotificationEventType.SAAS_SUBSCRIPTION_ACTIVATED,
+        channel: prisma_1.NotificationChannel.IN_APP,
+        name: 'SaaS Subscription Activated (In-App)',
+        subject: 'Subscription Activated: {{planName}}',
+        body: 'Your subscription to {{planName}} has been successfully activated.',
+        variables: ['planName'],
+    },
+    {
+        eventType: prisma_1.NotificationEventType.SAAS_INVOICE_GENERATED,
+        channel: prisma_1.NotificationChannel.IN_APP,
+        name: 'SaaS Invoice Generated (In-App)',
+        subject: 'New SaaS Billing Invoice: {{invoiceNumber}}',
+        body: 'Invoice {{invoiceNumber}} for {{amount}} has been generated. Due date: {{dueDate}}.',
+        variables: ['invoiceNumber', 'amount', 'dueDate'],
+    },
+    {
+        eventType: prisma_1.NotificationEventType.SAAS_PAYMENT_SUCCESS,
+        channel: prisma_1.NotificationChannel.IN_APP,
+        name: 'SaaS Payment Success (In-App)',
+        subject: 'Payment Received: {{invoiceNumber}}',
+        body: 'Payment of {{amount}} for invoice {{invoiceNumber}} was successful.',
+        variables: ['invoiceNumber', 'amount'],
+    },
+    {
+        eventType: prisma_1.NotificationEventType.SAAS_PAYMENT_FAILED,
+        channel: prisma_1.NotificationChannel.IN_APP,
+        name: 'SaaS Payment Failed (In-App)',
+        subject: 'Payment Failed: {{invoiceNumber}}',
+        body: 'Payment for invoice {{invoiceNumber}} failed. Reason: {{reason}}.',
+        variables: ['invoiceNumber', 'reason'],
+    },
 ];
 /**
  * Ensures system templates are initialized for a school tenant.

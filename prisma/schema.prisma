@@ -190,6 +190,14 @@ model schools {
   payslips                     payslips[]
   expense_categories           expense_categories[]
   expenses                     expenses[]
+  school_subscriptions         school_subscriptions?
+  subscription_history         subscription_history[]
+  billing_addresses            billing_addresses?
+  billing_invoices             billing_invoices[]
+  billing_payments             billing_payments[]
+  coupon_redemptions           coupon_redemptions[]
+  payment_attempts             payment_attempts[]
+  credit_notes                 credit_notes[]
 }
 
 model sections {
@@ -365,6 +373,7 @@ model users {
   created_expenses            expenses[]             @relation("ExpenseCreator")
   approved_expenses           expenses[]             @relation("ExpenseApprover")
   expense_step_approvals      expense_approvals[]    @relation("ExpenseStepApprover")
+  issued_credit_notes         credit_notes[]         @relation("CreditNoteIssuer")
   schools                   schools?             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([role])
@@ -2087,6 +2096,15 @@ enum NotificationEventType {
   PAYROLL_PAID
   EXPENSE_SUBMITTED
   EXPENSE_STATUS_UPDATED
+  SAAS_TRIAL_STARTED
+  SAAS_TRIAL_EXPIRING_SOON
+  SAAS_TRIAL_EXPIRED
+  SAAS_SUBSCRIPTION_ACTIVATED
+  SAAS_SUBSCRIPTION_UPGRADED
+  SAAS_SUBSCRIPTION_SUSPENDED
+  SAAS_INVOICE_GENERATED
+  SAAS_PAYMENT_SUCCESS
+  SAAS_PAYMENT_FAILED
 }
 
 enum NotificationChannel {
@@ -2579,6 +2597,347 @@ model expense_approvals {
   approver   users         @relation("ExpenseStepApprover", fields: [approverId], references: [id], onDelete: Cascade)
 
   @@index([expenseId])
+}
+
+// ==========================================
+// PHASE 9 ENUMS & MODELS: SAAS SUBSCRIPTION & BILLING
+// ==========================================
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  GRACE_PERIOD
+  SUSPENDED
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL
+}
+
+enum PlanStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum BillingInvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  VOID
+  REFUNDED
+}
+
+enum BillingPaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum DiscountType {
+  FIXED
+  PERCENTAGE
+}
+
+enum TrialStatus {
+  NOT_STARTED
+  ACTIVE
+  EXPIRED
+  CONVERTED
+  CANCELLED
+}
+
+enum PaymentGatewayProvider {
+  MOCK
+  RAZORPAY
+  STRIPE
+}
+
+model subscription_plans {
+  id              String             @id @default(cuid())
+  name            String
+  code            String             @unique // FREE, BASIC, STANDARD, PREMIUM, ENTERPRISE
+  description     String?
+  monthlyPrice    Decimal            @db.Decimal(12, 2)
+  quarterlyPrice  Decimal            @db.Decimal(12, 2)
+  semiAnnualPrice Decimal            @db.Decimal(12, 2)
+  annualPrice     Decimal            @db.Decimal(12, 2)
+  currency        String             @default("USD")
+  trialDays       Int                @default(14)
+  isPopular       Boolean            @default(false)
+  status          PlanStatus         @default(ACTIVE)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  plan_features        plan_features?
+  school_subscriptions school_subscriptions[]
+  billing_invoices     billing_invoices[]
+}
+
+model plan_features {
+  id                String             @id @default(cuid())
+  planId            String             @unique
+  maxStudents       Int                @default(100) // -1 for unlimited
+  maxStaff          Int                @default(20)  // -1 for unlimited
+  maxStorageMb      Int                @default(1024)
+  maxBranches       Int                @default(1)
+  maxParentAccounts Int                @default(200) // -1 for unlimited
+  allowedModules    String[]
+  customLimits      Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  subscription_plans subscription_plans @relation(fields: [planId], references: [id], onDelete: Cascade)
+}
+
+model school_subscriptions {
+  id                    String                 @id @default(cuid())
+  schoolId              String                 @unique
+  planId                String
+  billingCycle          BillingCycle           @default(MONTHLY)
+  status                SubscriptionStatus     @default(TRIALING)
+  trialStatus           TrialStatus            @default(ACTIVE)
+  trialStartDate        DateTime?
+  trialEndDate          DateTime?
+  currentPeriodStart    DateTime               @default(now())
+  currentPeriodEnd      DateTime
+  nextBillingDate       DateTime?
+  cancelAtPeriodEnd     Boolean                @default(false)
+  cancelledAt           DateTime?
+  suspendedAt           DateTime?
+  gracePeriodEndDate    DateTime?
+  autoRenew             Boolean                @default(true)
+  gatewayProvider       PaymentGatewayProvider @default(MOCK)
+  gatewaySubscriptionId String?
+  gatewayCustomerId     String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  schools              schools                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subscription_plans   subscription_plans     @relation(fields: [planId], references: [id], onDelete: Restrict)
+  subscription_history subscription_history[]
+  billing_invoices     billing_invoices[]
+  payment_attempts     payment_attempts[]
+
+  @@index([schoolId])
+  @@index([planId])
+  @@index([status])
+}
+
+model subscription_history {
+  id             String                 @id @default(cuid())
+  subscriptionId String
+  schoolId       String
+  action         String                 // CREATED, TRIAL_STARTED, ACTIVATED, UPGRADED, DOWNGRADED, RENEWED, PAST_DUE, GRACE_PERIOD, SUSPENDED, CANCELLED, REACTIVATED
+  fromPlanId     String?
+  toPlanId       String?
+  fromStatus     SubscriptionStatus?
+  toStatus       SubscriptionStatus
+  reason         String?
+  actorId        String?
+  metadata       Json?
+  createdAt      DateTime               @default(now())
+
+  school_subscriptions school_subscriptions @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  schools              schools              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([schoolId])
+}
+
+model subscription_coupons {
+  id                String                 @id @default(cuid())
+  code              String                 @unique
+  name              String
+  discountType      DiscountType           @default(PERCENTAGE)
+  discountValue     Decimal                @db.Decimal(10, 2)
+  maxDiscountAmount Decimal?               @db.Decimal(10, 2)
+  minBillingAmount  Decimal?               @db.Decimal(10, 2)
+  validFrom         DateTime               @default(now())
+  validUntil        DateTime?
+  maxUses           Int?
+  usedCount         Int                    @default(0)
+  maxUsesPerSchool  Int                    @default(1)
+  applicablePlans   String[]               // Plan codes; empty = all
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  coupon_redemptions coupon_redemptions[]
+}
+
+model coupon_redemptions {
+  id              String               @id @default(cuid())
+  couponId        String
+  schoolId        String
+  invoiceId       String?
+  discountApplied Decimal              @db.Decimal(12, 2)
+  redeemedAt      DateTime             @default(now())
+
+  subscription_coupons subscription_coupons @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  schools              schools              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([couponId])
+  @@index([schoolId])
+}
+
+model billing_addresses {
+  id           String   @id @default(cuid())
+  schoolId     String   @unique
+  companyName  String
+  taxId        String?  // GSTIN / VAT / EIN
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String   @default("IN")
+  billingEmail String
+  billingPhone String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  schools      schools  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+model billing_invoices {
+  id             String                 @id @default(cuid())
+  schoolId       String
+  subscriptionId String?
+  planId         String?
+  invoiceNumber  String                 @unique // e.g. INV-SAAS-2026-0001
+  billingCycle   BillingCycle
+  periodStart    DateTime
+  periodEnd      DateTime
+  subtotal       Decimal                @db.Decimal(12, 2)
+  discountAmount Decimal                @default(0) @db.Decimal(12, 2)
+  couponCode     String?
+  taxPercentage  Decimal                @default(0) @db.Decimal(5, 2)
+  taxAmount      Decimal                @default(0) @db.Decimal(12, 2)
+  totalAmount    Decimal                @db.Decimal(12, 2)
+  amountPaid     Decimal                @default(0) @db.Decimal(12, 2)
+  balanceDue     Decimal                @db.Decimal(12, 2)
+  currency       String                 @default("USD")
+  status         BillingInvoiceStatus   @default(ISSUED)
+  issueDate      DateTime               @default(now())
+  dueDate        DateTime
+  paidAt         DateTime?
+  notes          String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  schools              schools                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school_subscriptions school_subscriptions?  @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  subscription_plans   subscription_plans?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  billing_invoice_items billing_invoice_items[]
+  billing_payments     billing_payments[]
+  credit_notes         credit_notes[]
+
+  @@index([schoolId])
+  @@index([subscriptionId])
+  @@index([status])
+}
+
+model billing_invoice_items {
+  id          String           @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Int              @default(1)
+  unitPrice   Decimal          @db.Decimal(12, 2)
+  amount      Decimal          @db.Decimal(12, 2)
+  itemType    String           // SUBSCRIPTION, ADDON, UPGRADE_PRORATION, DISCOUNT, TAX
+  createdAt   DateTime         @default(now())
+
+  billing_invoices billing_invoices @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model billing_payments {
+  id                   String                 @id @default(cuid())
+  schoolId             String
+  invoiceId            String
+  paymentNumber        String                 @unique // e.g. PAY-SAAS-2026-0001
+  amount               Decimal                @db.Decimal(12, 2)
+  currency             String                 @default("USD")
+  gatewayProvider      PaymentGatewayProvider @default(MOCK)
+  gatewayTransactionId String?
+  gatewayPaymentId     String?
+  status               BillingPaymentStatus   @default(PENDING)
+  paidAt               DateTime?
+  failureReason        String?
+  receiptUrl           String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  schools          schools          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  billing_invoices billing_invoices @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([invoiceId])
+  @@index([status])
+}
+
+model payment_attempts {
+  id              String                 @id @default(cuid())
+  subscriptionId  String
+  schoolId        String
+  invoiceId       String?
+  attemptNumber   Int                    @default(1)
+  status          BillingPaymentStatus
+  gatewayProvider PaymentGatewayProvider
+  errorMessage    String?
+  attemptedAt     DateTime               @default(now())
+
+  school_subscriptions school_subscriptions @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  schools              schools              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([schoolId])
+}
+
+model payment_webhook_events {
+  id              String                 @id @default(cuid())
+  gatewayProvider PaymentGatewayProvider
+  eventId         String                 @unique
+  eventType       String
+  payload         Json
+  isProcessed     Boolean                @default(false)
+  processedAt     DateTime?
+  errorMessage    String?
+  createdAt       DateTime               @default(now())
+
+  @@index([eventId])
+  @@index([isProcessed])
+}
+
+model credit_notes {
+  id               String           @id @default(cuid())
+  invoiceId        String
+  schoolId         String
+  creditNoteNumber String           @unique
+  amount           Decimal          @db.Decimal(12, 2)
+  reason           String
+  issuedById       String
+  issuedAt         DateTime         @default(now())
+
+  billing_invoices billing_invoices @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  schools          schools          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  issuedBy         users            @relation("CreditNoteIssuer", fields: [issuedById], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([schoolId])
 }
 
 

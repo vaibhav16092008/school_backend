@@ -132,15 +132,22 @@ class DeliveryQueue {
     async handleJobFailure(job, currentAttempt, errorMessage) {
         const isRetryable = currentAttempt < job.maxAttempts;
         const nextStatus = isRetryable ? prisma_1.DeliveryStatus.RETRYING : prisma_1.DeliveryStatus.FAILED;
-        await prisma_1.prisma.notification_deliveries.update({
-            where: { id: job.deliveryId },
-            data: {
-                status: nextStatus,
-                attemptCount: currentAttempt,
-                lastAttemptAt: new Date(),
-                errorMessage,
-            },
-        });
+        try {
+            await prisma_1.prisma.notification_deliveries.update({
+                where: { id: job.deliveryId },
+                data: {
+                    status: nextStatus,
+                    attemptCount: currentAttempt,
+                    lastAttemptAt: new Date(),
+                    errorMessage,
+                },
+            });
+        }
+        catch (err) {
+            if (err.code !== 'P2025') {
+                console.error(`[DeliveryQueue] Failed to update delivery ${job.deliveryId}:`, err);
+            }
+        }
         if (isRetryable) {
             // Exponential backoff delay: 2^attempt * 500ms
             const backoffDelay = Math.pow(2, currentAttempt) * 500;

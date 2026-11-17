@@ -49,7 +49,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Library_membersScalarFieldEnum = exports.Library_book_copiesScalarFieldEnum = exports.Library_booksScalarFieldEnum = exports.Library_publishersScalarFieldEnum = exports.Library_authorsScalarFieldEnum = exports.Library_categoriesScalarFieldEnum = exports.Library_settingsScalarFieldEnum = exports.Student_transport_allocationsScalarFieldEnum = exports.Vehicle_assignmentsScalarFieldEnum = exports.DriversScalarFieldEnum = exports.Transport_stopsScalarFieldEnum = exports.Transport_routesScalarFieldEnum = exports.VehiclesScalarFieldEnum = exports.Homework_submissionsScalarFieldEnum = exports.HomeworkScalarFieldEnum = exports.Class_timetablesScalarFieldEnum = exports.Exam_resultsScalarFieldEnum = exports.Exam_marksScalarFieldEnum = exports.Exam_schedulesScalarFieldEnum = exports.ExamsScalarFieldEnum = exports.Grading_rulesScalarFieldEnum = exports.Grading_scalesScalarFieldEnum = exports.Fee_paymentsScalarFieldEnum = exports.Student_fee_invoicesScalarFieldEnum = exports.Fee_structuresScalarFieldEnum = exports.Fee_categoriesScalarFieldEnum = exports.Staff_attendanceScalarFieldEnum = exports.Student_attendanceScalarFieldEnum = exports.Audit_logsScalarFieldEnum = exports.DocumentsScalarFieldEnum = exports.Refresh_tokensScalarFieldEnum = exports.UsersScalarFieldEnum = exports.TeachersScalarFieldEnum = exports.SubjectsScalarFieldEnum = exports.StudentsScalarFieldEnum = exports.Student_enrollmentsScalarFieldEnum = exports.SectionsScalarFieldEnum = exports.SchoolsScalarFieldEnum = exports.ParentsScalarFieldEnum = exports.Parent_studentsScalarFieldEnum = exports.Class_subjectsScalarFieldEnum = exports.ClassesScalarFieldEnum = exports.Academic_yearsScalarFieldEnum = exports.TransactionIsolationLevel = exports.ModelName = exports.AnyNull = exports.JsonNull = exports.DbNull = exports.NullTypes = exports.Decimal = void 0;
-exports.JsonNullValueFilter = exports.NullsOrder = exports.QueryMode = exports.NullableJsonNullValueInput = exports.SortOrder = exports.Expense_approvalsScalarFieldEnum = exports.ExpensesScalarFieldEnum = exports.Expense_categoriesScalarFieldEnum = exports.PayslipsScalarFieldEnum = exports.Payroll_adjustmentsScalarFieldEnum = exports.Payroll_itemsScalarFieldEnum = exports.Payroll_recordsScalarFieldEnum = exports.Payroll_periodsScalarFieldEnum = exports.Employee_salary_assignmentsScalarFieldEnum = exports.Salary_componentsScalarFieldEnum = exports.Salary_structuresScalarFieldEnum = exports.Leave_applicationsScalarFieldEnum = exports.Leave_balancesScalarFieldEnum = exports.Leave_typesScalarFieldEnum = exports.Employee_documentsScalarFieldEnum = exports.Employee_profilesScalarFieldEnum = exports.DesignationsScalarFieldEnum = exports.DepartmentsScalarFieldEnum = exports.Notification_settingsScalarFieldEnum = exports.Notification_deliveriesScalarFieldEnum = exports.Notification_preferencesScalarFieldEnum = exports.Notification_templatesScalarFieldEnum = exports.Notification_recipientsScalarFieldEnum = exports.NotificationsScalarFieldEnum = exports.AnnouncementsScalarFieldEnum = exports.Portal_invitationsScalarFieldEnum = exports.Portal_settingsScalarFieldEnum = exports.Inventory_purchase_order_itemsScalarFieldEnum = exports.Inventory_purchase_ordersScalarFieldEnum = exports.Inventory_maintenance_logsScalarFieldEnum = exports.Inventory_maintenance_ticketsScalarFieldEnum = exports.Inventory_depreciationsScalarFieldEnum = exports.Inventory_asset_assignmentsScalarFieldEnum = exports.Inventory_assetsScalarFieldEnum = exports.Inventory_stock_transfersScalarFieldEnum = exports.Inventory_stock_movementsScalarFieldEnum = exports.Inventory_itemsScalarFieldEnum = exports.Inventory_suppliersScalarFieldEnum = exports.Inventory_locationsScalarFieldEnum = exports.Inventory_categoriesScalarFieldEnum = exports.Library_reservationsScalarFieldEnum = exports.Library_fine_adjustmentsScalarFieldEnum = exports.Library_finesScalarFieldEnum = exports.Library_issuesScalarFieldEnum = void 0;
+exports.Coupon_redemptionsScalarFieldEnum = exports.Subscription_couponsScalarFieldEnum = exports.Subscription_historyScalarFieldEnum = exports.School_subscriptionsScalarFieldEnum = exports.Plan_featuresScalarFieldEnum = exports.Subscription_plansScalarFieldEnum = exports.Expense_approvalsScalarFieldEnum = exports.ExpensesScalarFieldEnum = exports.Expense_categoriesScalarFieldEnum = exports.PayslipsScalarFieldEnum = exports.Payroll_adjustmentsScalarFieldEnum = exports.Payroll_itemsScalarFieldEnum = exports.Payroll_recordsScalarFieldEnum = exports.Payroll_periodsScalarFieldEnum = exports.Employee_salary_assignmentsScalarFieldEnum = exports.Salary_componentsScalarFieldEnum = exports.Salary_structuresScalarFieldEnum = exports.Leave_applicationsScalarFieldEnum = exports.Leave_balancesScalarFieldEnum = exports.Leave_typesScalarFieldEnum = exports.Employee_documentsScalarFieldEnum = exports.Employee_profilesScalarFieldEnum = exports.DesignationsScalarFieldEnum = exports.DepartmentsScalarFieldEnum = exports.Notification_settingsScalarFieldEnum = exports.Notification_deliveriesScalarFieldEnum = exports.Notification_preferencesScalarFieldEnum = exports.Notification_templatesScalarFieldEnum = exports.Notification_recipientsScalarFieldEnum = exports.NotificationsScalarFieldEnum = exports.AnnouncementsScalarFieldEnum = exports.Portal_invitationsScalarFieldEnum = exports.Portal_settingsScalarFieldEnum = exports.Inventory_purchase_order_itemsScalarFieldEnum = exports.Inventory_purchase_ordersScalarFieldEnum = exports.Inventory_maintenance_logsScalarFieldEnum = exports.Inventory_maintenance_ticketsScalarFieldEnum = exports.Inventory_depreciationsScalarFieldEnum = exports.Inventory_asset_assignmentsScalarFieldEnum = exports.Inventory_assetsScalarFieldEnum = exports.Inventory_stock_transfersScalarFieldEnum = exports.Inventory_stock_movementsScalarFieldEnum = exports.Inventory_itemsScalarFieldEnum = exports.Inventory_suppliersScalarFieldEnum = exports.Inventory_locationsScalarFieldEnum = exports.Inventory_categoriesScalarFieldEnum = exports.Library_reservationsScalarFieldEnum = exports.Library_fine_adjustmentsScalarFieldEnum = exports.Library_finesScalarFieldEnum = exports.Library_issuesScalarFieldEnum = void 0;
+exports.JsonNullValueFilter = exports.NullsOrder = exports.QueryMode = exports.JsonNullValueInput = exports.NullableJsonNullValueInput = exports.SortOrder = exports.Credit_notesScalarFieldEnum = exports.Payment_webhook_eventsScalarFieldEnum = exports.Payment_attemptsScalarFieldEnum = exports.Billing_paymentsScalarFieldEnum = exports.Billing_invoice_itemsScalarFieldEnum = exports.Billing_invoicesScalarFieldEnum = exports.Billing_addressesScalarFieldEnum = void 0;
 const runtime = __importStar(require("@prisma/client/runtime/index-browser"));
 exports.Decimal = runtime.Decimal;
 exports.NullTypes = {
@@ -162,7 +163,20 @@ exports.ModelName = {
     payslips: 'payslips',
     expense_categories: 'expense_categories',
     expenses: 'expenses',
-    expense_approvals: 'expense_approvals'
+    expense_approvals: 'expense_approvals',
+    subscription_plans: 'subscription_plans',
+    plan_features: 'plan_features',
+    school_subscriptions: 'school_subscriptions',
+    subscription_history: 'subscription_history',
+    subscription_coupons: 'subscription_coupons',
+    coupon_redemptions: 'coupon_redemptions',
+    billing_addresses: 'billing_addresses',
+    billing_invoices: 'billing_invoices',
+    billing_invoice_items: 'billing_invoice_items',
+    billing_payments: 'billing_payments',
+    payment_attempts: 'payment_attempts',
+    payment_webhook_events: 'payment_webhook_events',
+    credit_notes: 'credit_notes'
 };
 /*
  * Enums
@@ -1433,12 +1447,208 @@ exports.Expense_approvalsScalarFieldEnum = {
     comment: 'comment',
     actionDate: 'actionDate'
 };
+exports.Subscription_plansScalarFieldEnum = {
+    id: 'id',
+    name: 'name',
+    code: 'code',
+    description: 'description',
+    monthlyPrice: 'monthlyPrice',
+    quarterlyPrice: 'quarterlyPrice',
+    semiAnnualPrice: 'semiAnnualPrice',
+    annualPrice: 'annualPrice',
+    currency: 'currency',
+    trialDays: 'trialDays',
+    isPopular: 'isPopular',
+    status: 'status',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.Plan_featuresScalarFieldEnum = {
+    id: 'id',
+    planId: 'planId',
+    maxStudents: 'maxStudents',
+    maxStaff: 'maxStaff',
+    maxStorageMb: 'maxStorageMb',
+    maxBranches: 'maxBranches',
+    maxParentAccounts: 'maxParentAccounts',
+    allowedModules: 'allowedModules',
+    customLimits: 'customLimits',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.School_subscriptionsScalarFieldEnum = {
+    id: 'id',
+    schoolId: 'schoolId',
+    planId: 'planId',
+    billingCycle: 'billingCycle',
+    status: 'status',
+    trialStatus: 'trialStatus',
+    trialStartDate: 'trialStartDate',
+    trialEndDate: 'trialEndDate',
+    currentPeriodStart: 'currentPeriodStart',
+    currentPeriodEnd: 'currentPeriodEnd',
+    nextBillingDate: 'nextBillingDate',
+    cancelAtPeriodEnd: 'cancelAtPeriodEnd',
+    cancelledAt: 'cancelledAt',
+    suspendedAt: 'suspendedAt',
+    gracePeriodEndDate: 'gracePeriodEndDate',
+    autoRenew: 'autoRenew',
+    gatewayProvider: 'gatewayProvider',
+    gatewaySubscriptionId: 'gatewaySubscriptionId',
+    gatewayCustomerId: 'gatewayCustomerId',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.Subscription_historyScalarFieldEnum = {
+    id: 'id',
+    subscriptionId: 'subscriptionId',
+    schoolId: 'schoolId',
+    action: 'action',
+    fromPlanId: 'fromPlanId',
+    toPlanId: 'toPlanId',
+    fromStatus: 'fromStatus',
+    toStatus: 'toStatus',
+    reason: 'reason',
+    actorId: 'actorId',
+    metadata: 'metadata',
+    createdAt: 'createdAt'
+};
+exports.Subscription_couponsScalarFieldEnum = {
+    id: 'id',
+    code: 'code',
+    name: 'name',
+    discountType: 'discountType',
+    discountValue: 'discountValue',
+    maxDiscountAmount: 'maxDiscountAmount',
+    minBillingAmount: 'minBillingAmount',
+    validFrom: 'validFrom',
+    validUntil: 'validUntil',
+    maxUses: 'maxUses',
+    usedCount: 'usedCount',
+    maxUsesPerSchool: 'maxUsesPerSchool',
+    applicablePlans: 'applicablePlans',
+    isActive: 'isActive',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.Coupon_redemptionsScalarFieldEnum = {
+    id: 'id',
+    couponId: 'couponId',
+    schoolId: 'schoolId',
+    invoiceId: 'invoiceId',
+    discountApplied: 'discountApplied',
+    redeemedAt: 'redeemedAt'
+};
+exports.Billing_addressesScalarFieldEnum = {
+    id: 'id',
+    schoolId: 'schoolId',
+    companyName: 'companyName',
+    taxId: 'taxId',
+    addressLine1: 'addressLine1',
+    addressLine2: 'addressLine2',
+    city: 'city',
+    state: 'state',
+    postalCode: 'postalCode',
+    country: 'country',
+    billingEmail: 'billingEmail',
+    billingPhone: 'billingPhone',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.Billing_invoicesScalarFieldEnum = {
+    id: 'id',
+    schoolId: 'schoolId',
+    subscriptionId: 'subscriptionId',
+    planId: 'planId',
+    invoiceNumber: 'invoiceNumber',
+    billingCycle: 'billingCycle',
+    periodStart: 'periodStart',
+    periodEnd: 'periodEnd',
+    subtotal: 'subtotal',
+    discountAmount: 'discountAmount',
+    couponCode: 'couponCode',
+    taxPercentage: 'taxPercentage',
+    taxAmount: 'taxAmount',
+    totalAmount: 'totalAmount',
+    amountPaid: 'amountPaid',
+    balanceDue: 'balanceDue',
+    currency: 'currency',
+    status: 'status',
+    issueDate: 'issueDate',
+    dueDate: 'dueDate',
+    paidAt: 'paidAt',
+    notes: 'notes',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.Billing_invoice_itemsScalarFieldEnum = {
+    id: 'id',
+    invoiceId: 'invoiceId',
+    description: 'description',
+    quantity: 'quantity',
+    unitPrice: 'unitPrice',
+    amount: 'amount',
+    itemType: 'itemType',
+    createdAt: 'createdAt'
+};
+exports.Billing_paymentsScalarFieldEnum = {
+    id: 'id',
+    schoolId: 'schoolId',
+    invoiceId: 'invoiceId',
+    paymentNumber: 'paymentNumber',
+    amount: 'amount',
+    currency: 'currency',
+    gatewayProvider: 'gatewayProvider',
+    gatewayTransactionId: 'gatewayTransactionId',
+    gatewayPaymentId: 'gatewayPaymentId',
+    status: 'status',
+    paidAt: 'paidAt',
+    failureReason: 'failureReason',
+    receiptUrl: 'receiptUrl',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.Payment_attemptsScalarFieldEnum = {
+    id: 'id',
+    subscriptionId: 'subscriptionId',
+    schoolId: 'schoolId',
+    invoiceId: 'invoiceId',
+    attemptNumber: 'attemptNumber',
+    status: 'status',
+    gatewayProvider: 'gatewayProvider',
+    errorMessage: 'errorMessage',
+    attemptedAt: 'attemptedAt'
+};
+exports.Payment_webhook_eventsScalarFieldEnum = {
+    id: 'id',
+    gatewayProvider: 'gatewayProvider',
+    eventId: 'eventId',
+    eventType: 'eventType',
+    payload: 'payload',
+    isProcessed: 'isProcessed',
+    processedAt: 'processedAt',
+    errorMessage: 'errorMessage',
+    createdAt: 'createdAt'
+};
+exports.Credit_notesScalarFieldEnum = {
+    id: 'id',
+    invoiceId: 'invoiceId',
+    schoolId: 'schoolId',
+    creditNoteNumber: 'creditNoteNumber',
+    amount: 'amount',
+    reason: 'reason',
+    issuedById: 'issuedById',
+    issuedAt: 'issuedAt'
+};
 exports.SortOrder = {
     asc: 'asc',
     desc: 'desc'
 };
 exports.NullableJsonNullValueInput = {
     DbNull: exports.DbNull,
+    JsonNull: exports.JsonNull
+};
+exports.JsonNullValueInput = {
     JsonNull: exports.JsonNull
 };
 exports.QueryMode = {
