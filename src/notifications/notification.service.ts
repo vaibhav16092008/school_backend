@@ -32,13 +32,11 @@ export class NotificationService {
    * Helper to ensure tenant notification settings exist.
    */
   public async getOrCreateSettings(schoolId: string) {
-    let settings = await prisma.notification_settings.findUnique({
-      where: { schoolId },
-    });
-
-    if (!settings) {
-      settings = await prisma.notification_settings.create({
-        data: {
+    try {
+      return await prisma.notification_settings.upsert({
+        where: { schoolId },
+        update: {},
+        create: {
           schoolId,
           emailEnabled: true,
           smsEnabled: false,
@@ -47,9 +45,13 @@ export class NotificationService {
           maxDailySmsPerStudent: 5,
         },
       });
+    } catch (err: any) {
+      const existing = await prisma.notification_settings.findUnique({
+        where: { schoolId },
+      });
+      if (existing) return existing;
+      throw err;
     }
-
-    return settings;
   }
 
   /**

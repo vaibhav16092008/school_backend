@@ -10,12 +10,11 @@ class NotificationService {
      * Helper to ensure tenant notification settings exist.
      */
     async getOrCreateSettings(schoolId) {
-        let settings = await prisma_1.prisma.notification_settings.findUnique({
-            where: { schoolId },
-        });
-        if (!settings) {
-            settings = await prisma_1.prisma.notification_settings.create({
-                data: {
+        try {
+            return await prisma_1.prisma.notification_settings.upsert({
+                where: { schoolId },
+                update: {},
+                create: {
                     schoolId,
                     emailEnabled: true,
                     smsEnabled: false,
@@ -25,7 +24,14 @@ class NotificationService {
                 },
             });
         }
-        return settings;
+        catch (err) {
+            const existing = await prisma_1.prisma.notification_settings.findUnique({
+                where: { schoolId },
+            });
+            if (existing)
+                return existing;
+            throw err;
+        }
     }
     /**
      * Dispatches a notification across in-app and external channels.

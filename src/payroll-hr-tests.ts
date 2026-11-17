@@ -741,8 +741,9 @@ async function runPayrollHrTests() {
     // TEST 11: Phase 7 Notification Event Triggers Dispatch
     // -------------------------------------------------------------
     {
-      // Check notification logs in DB for Phase 8 events triggered during earlier steps:
-      // LEAVE_APPLICATION_SUBMITTED, LEAVE_STATUS_UPDATED, PAYROLL_GENERATED, PAYSLIP_PUBLISHED, EXPENSE_SUBMITTED, EXPENSE_STATUS_UPDATED
+      // Give async background notification dispatch time to land on cloud database
+      await new Promise((r) => setTimeout(r, 2500));
+
       const notifications = await prisma.notifications.findMany({
         where: {
           schoolId: schoolA.id,

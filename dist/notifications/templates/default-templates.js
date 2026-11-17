@@ -267,6 +267,12 @@ exports.SYSTEM_DEFAULT_TEMPLATES = [
  * Ensures system templates are initialized for a school tenant.
  */
 async function ensureDefaultTemplates(schoolId) {
+    const existingCount = await prisma_1.prisma.notification_templates.count({
+        where: { schoolId },
+    });
+    if (existingCount >= exports.SYSTEM_DEFAULT_TEMPLATES.length) {
+        return;
+    }
     for (const tpl of exports.SYSTEM_DEFAULT_TEMPLATES) {
         try {
             await prisma_1.prisma.notification_templates.upsert({

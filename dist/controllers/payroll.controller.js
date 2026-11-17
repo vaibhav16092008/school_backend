@@ -403,17 +403,19 @@ const generatePayroll = async (req, res, next) => {
             req,
         });
         // Notify employees asynchronously
+        const notificationPromises = [];
         for (const emp of employees) {
             if (emp.teachers?.userId) {
                 const record = generatedRecords.find((r) => r.employeeProfileId === emp.id);
                 if (record) {
-                    erp_triggers_1.ErpNotificationTriggers.triggerPayrollGenerated(schoolId, emp.teachers.userId, {
+                    notificationPromises.push(erp_triggers_1.ErpNotificationTriggers.triggerPayrollGenerated(schoolId, emp.teachers.userId, {
                         period: `${period.year}-${period.month.toString().padStart(2, '0')}`,
                         netSalary: `$${record.netSalary}`,
-                    }).catch((e) => console.error('[NotificationTrigger] Payroll generated failed:', e));
+                    }).catch((e) => console.error('[NotificationTrigger] Payroll generated failed:', e)));
                 }
             }
         }
+        await Promise.all(notificationPromises);
         return (0, api_response_1.sendSuccess)(res, { count: generatedRecords.length, records: generatedRecords }, `Generated payroll for ${generatedRecords.length} employees`, 200);
     }
     catch (error) {
@@ -563,6 +565,7 @@ const finalizePayrollPeriod = async (req, res, next) => {
         if (period.payroll_records.length === 0) {
             return next(api_error_1.ApiError.badRequest('Cannot finalize a payroll period with 0 generated records'));
         }
+        const payslipsToNotify = [];
         await prisma_1.prisma.$transaction(async (tx) => {
             // 1. Lock period to FINALIZED
             await tx.payroll_periods.update({
@@ -600,15 +603,24 @@ const finalizePayrollPeriod = async (req, res, next) => {
                         netSalary: rec.netSalary,
                     },
                 });
-                // Trigger notification
-                erp_triggers_1.ErpNotificationTriggers.triggerPayslipPublished(schoolId, rec.employee_profiles.teachers.userId, {
-                    payslipNumber,
-                    month: period.month,
-                    year: period.year,
-                    netSalary: String(rec.netSalary),
-                });
+                if (rec.employee_profiles?.teachers?.userId) {
+                    payslipsToNotify.push({
+                        userId: rec.employee_profiles.teachers.userId,
+                        payslipNumber,
+                        month: period.month,
+                        year: period.year,
+                        netSalary: String(rec.netSalary),
+                    });
+                }
             }
         });
+        // Dispatch notifications safely outside the database transaction
+        await Promise.all(payslipsToNotify.map((p) => erp_triggers_1.ErpNotificationTriggers.triggerPayslipPublished(schoolId, p.userId, {
+            payslipNumber: p.payslipNumber,
+            month: p.month,
+            year: p.year,
+            netSalary: p.netSalary,
+        }).catch((e) => console.error('[NotificationTrigger] Payslip published notification failed:', e))));
         await (0, audit_1.logAudit)({
             schoolId,
             userId: req.user?.id,
