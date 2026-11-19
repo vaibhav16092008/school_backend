@@ -25,7 +25,7 @@ const createApp = () => {
                 scriptSrc: ["'self'", "'unsafe-inline'"],
                 styleSrc: ["'self'", "'unsafe-inline'"],
                 imgSrc: ["'self'", 'data:', 'blob:'],
-                connectSrc: ["'self'", env_1.ENV.CLIENT_URL, 'http://localhost:3000', 'http://127.0.0.1:3000'],
+                connectSrc: ["'self'", env_1.ENV.CLIENT_URL, 'http://localhost:3000', 'http://127.0.0.1:3000', 'https://*.vercel.app'],
                 fontSrc: ["'self'"],
                 objectSrc: ["'none'"],
                 mediaSrc: ["'self'"],
@@ -44,8 +44,22 @@ const createApp = () => {
         noSniff: true,
     }));
     // Security & Cross-Origin
+    const allowedOrigins = [
+        env_1.ENV.CLIENT_URL,
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ].filter(Boolean);
     app.use((0, cors_1.default)({
-        origin: [env_1.ENV.CLIENT_URL, 'http://localhost:3000', 'http://127.0.0.1:3000'],
+        origin: (origin, callback) => {
+            if (!origin)
+                return callback(null, true);
+            if (allowedOrigins.includes(origin) ||
+                origin.endsWith('.vercel.app') ||
+                origin.startsWith('http://localhost:')) {
+                return callback(null, true);
+            }
+            return callback(null, true);
+        },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
